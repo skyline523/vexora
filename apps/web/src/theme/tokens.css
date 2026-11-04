@@ -1,0 +1,64 @@
+:root {
+  color-scheme: dark;
+
+  --vx-bg-root: #070b10;
+  --vx-bg-panel: #0d131b;
+  --vx-bg-elevated: #121a24;
+  --vx-bg-hover: #182231;
+  --vx-bg-active: #1d2a3b;
+
+  --vx-border: #223044;
+  --vx-border-strong: #2f425c;
+
+  --vx-text: #e7eef8;
+  --vx-text-secondary: #9aabc2;
+  --vx-text-muted: #6e829b;
+
+  --vx-accent: #3d8bfd;
+  --vx-accent-soft: rgba(61, 139, 253, 0.16);
+
+  --vx-up: #2fbf71;
+  --vx-up-soft: rgba(47, 191, 113, 0.14);
+  --vx-down: #ef5b5b;
+  --vx-down-soft: rgba(239, 91, 91, 0.14);
+
+  --vx-nav-height: 44px;
+  --vx-panel-header: 32px;
+  --vx-font: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --vx-mono: "IBM Plex Mono", "Cascadia Mono", "Consolas", monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--vx-font);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--vx-text);
+  background: var(--vx-bg-root);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--vx-accent);
+  outline-offset: 1px;
+}

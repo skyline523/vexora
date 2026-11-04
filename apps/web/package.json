@@ -12,9 +12,12 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.3.4",
     "@vexora/shared": "workspace:*",
+    "antd": "^6.7.0",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "zustand": "^5.0.16"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

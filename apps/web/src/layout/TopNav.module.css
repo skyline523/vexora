@@ -1,0 +1,86 @@
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: var(--vx-nav-height);
+  padding: 0 12px;
+  border-bottom: 1px solid var(--vx-border);
+  background: linear-gradient(180deg, #101821 0%, #0c1219 100%);
+  flex-shrink: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 120px;
+}
+
+.brandName {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--vx-text);
+}
+
+.brandMark {
+  font-size: 11px;
+  color: var(--vx-text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.label {
+  font-size: 11px;
+  color: var(--vx-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.priceBlock {
+  margin-left: auto;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--vx-mono);
+}
+
+.price {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--vx-text);
+}
+
+.up {
+  color: var(--vx-up);
+}
+
+.down {
+  color: var(--vx-down);
+}
+
+@media (max-width: 900px) {
+  .brandMark,
+  .priceBlock {
+    display: none;
+  }
+
+  .nav {
+    gap: 10px;
+  }
+}

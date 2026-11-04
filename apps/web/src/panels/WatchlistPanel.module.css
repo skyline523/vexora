@@ -1,0 +1,72 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--vx-bg-panel);
+  min-width: 0;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  overflow: auto;
+  flex: 1;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+}
+
+.item:hover {
+  background: var(--vx-bg-hover);
+}
+
+.itemActive {
+  background: var(--vx-bg-active);
+  border-left-color: var(--vx-accent);
+}
+
+.symbol {
+  font-weight: 600;
+  color: var(--vx-text);
+}
+
+.market {
+  grid-column: 1;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--vx-text-muted);
+}
+
+.price {
+  font-family: var(--vx-mono);
+  font-size: 12px;
+  text-align: right;
+}
+
+.change {
+  grid-column: 2;
+  font-family: var(--vx-mono);
+  font-size: 11px;
+  text-align: right;
+}
+
+.up {
+  color: var(--vx-up);
+}
+
+.down {
+  color: var(--vx-down);
+}

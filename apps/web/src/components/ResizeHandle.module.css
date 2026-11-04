@@ -1,0 +1,35 @@
+.handle {
+  position: relative;
+  flex: 0 0 5px;
+  background: transparent;
+  touch-action: none;
+  z-index: 2;
+}
+
+.handle::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--vx-border);
+  opacity: 0.55;
+  transition: background-color 150ms ease, opacity 150ms ease;
+}
+
+.handle:hover::after,
+.handle:focus-visible::after,
+.handle[data-active="true"]::after {
+  background: var(--vx-accent);
+  opacity: 1;
+}
+
+.vertical {
+  cursor: col-resize;
+  width: 5px;
+  align-self: stretch;
+}
+
+.horizontal {
+  cursor: row-resize;
+  height: 5px;
+  width: 100%;
+}
