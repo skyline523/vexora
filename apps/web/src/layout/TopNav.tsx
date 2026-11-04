@@ -2,9 +2,10 @@ import { Segmented, Select } from 'antd';
 import {
   formatPercent,
   formatPrice,
+  getInstrument,
   INTERVAL_OPTIONS,
   MARKET_TYPE_OPTIONS,
-  WATCHLIST,
+  resolveWatchlistItems,
 } from '../data/mockMarket';
 import { useTerminalStore } from '../store/terminalStore';
 import type { KlineInterval, MarketType } from '../types/terminal';
@@ -14,12 +15,15 @@ export function TopNav() {
   const marketType = useTerminalStore((state) => state.marketType);
   const symbolId = useTerminalStore((state) => state.symbolId);
   const interval = useTerminalStore((state) => state.interval);
+  const watchlistIds = useTerminalStore((state) => state.watchlistIds);
   const setMarketType = useTerminalStore((state) => state.setMarketType);
   const setSymbolId = useTerminalStore((state) => state.setSymbolId);
   const setInterval = useTerminalStore((state) => state.setInterval);
 
-  const symbols = WATCHLIST.filter((item) => item.marketType === marketType);
-  const active = WATCHLIST.find((item) => item.symbolId === symbolId) ?? symbols[0];
+  const symbols = resolveWatchlistItems(watchlistIds).filter(
+    (item) => item.marketType === marketType,
+  );
+  const active = getInstrument(symbolId) ?? symbols[0];
   const changeClass = (active?.changePercent ?? 0) >= 0 ? styles.up : styles.down;
 
   return (

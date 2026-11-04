@@ -13,19 +13,22 @@
   overflow: auto;
   font-family: var(--vx-mono);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .head,
 .row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: center;
   padding: 4px 10px;
 }
 
 .head {
   position: sticky;
   top: 0;
+  z-index: 2;
   background: var(--vx-bg-elevated);
   color: var(--vx-text-muted);
   font-size: 10px;
@@ -36,18 +39,22 @@
 
 .row {
   position: relative;
+  min-height: 22px;
 }
 
-.row span {
+.row > span:not(.bar) {
   position: relative;
   z-index: 1;
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .bar {
   position: absolute;
   top: 1px;
-  bottom: 1px;
   right: 0;
+  bottom: 1px;
+  z-index: 0;
   opacity: 0.22;
   pointer-events: none;
 }

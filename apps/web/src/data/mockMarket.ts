@@ -20,7 +20,8 @@ export const INTERVAL_OPTIONS: Array<{ label: string; value: KlineInterval }> = 
   { label: '1D', value: '1d' },
 ];
 
-export const WATCHLIST: WatchlistItem[] = [
+/** Full searchable instrument catalog (mock). */
+export const MARKET_INSTRUMENTS: WatchlistItem[] = [
   {
     symbolId: 'binance:spot:BTC/USDT',
     symbol: 'BTC/USDT',
@@ -43,6 +44,48 @@ export const WATCHLIST: WatchlistItem[] = [
     changePercent: 3.21,
   },
   {
+    symbolId: 'binance:spot:BNB/USDT',
+    symbol: 'BNB/USDT',
+    marketType: 'spot',
+    lastPrice: 612.4,
+    changePercent: 0.37,
+  },
+  {
+    symbolId: 'binance:spot:XRP/USDT',
+    symbol: 'XRP/USDT',
+    marketType: 'spot',
+    lastPrice: 0.6421,
+    changePercent: -1.15,
+  },
+  {
+    symbolId: 'binance:spot:DOGE/USDT',
+    symbol: 'DOGE/USDT',
+    marketType: 'spot',
+    lastPrice: 0.1584,
+    changePercent: 4.02,
+  },
+  {
+    symbolId: 'binance:spot:ADA/USDT',
+    symbol: 'ADA/USDT',
+    marketType: 'spot',
+    lastPrice: 0.482,
+    changePercent: 0.91,
+  },
+  {
+    symbolId: 'binance:spot:AVAX/USDT',
+    symbol: 'AVAX/USDT',
+    marketType: 'spot',
+    lastPrice: 36.84,
+    changePercent: -2.44,
+  },
+  {
+    symbolId: 'binance:spot:LINK/USDT',
+    symbol: 'LINK/USDT',
+    marketType: 'spot',
+    lastPrice: 14.26,
+    changePercent: 1.08,
+  },
+  {
     symbolId: 'binance:usdt_perpetual:BTCUSDT',
     symbol: 'BTCUSDT',
     marketType: 'usdt_perpetual',
@@ -57,13 +100,79 @@ export const WATCHLIST: WatchlistItem[] = [
     changePercent: -0.48,
   },
   {
-    symbolId: 'binance:spot:BNB/USDT',
-    symbol: 'BNB/USDT',
-    marketType: 'spot',
-    lastPrice: 612.4,
-    changePercent: 0.37,
+    symbolId: 'binance:usdt_perpetual:SOLUSDT',
+    symbol: 'SOLUSDT',
+    marketType: 'usdt_perpetual',
+    lastPrice: 178.55,
+    changePercent: 3.05,
+  },
+  {
+    symbolId: 'binance:usdt_perpetual:BNBUSDT',
+    symbol: 'BNBUSDT',
+    marketType: 'usdt_perpetual',
+    lastPrice: 612.8,
+    changePercent: 0.42,
+  },
+  {
+    symbolId: 'binance:usdt_perpetual:XRPUSDT',
+    symbol: 'XRPUSDT',
+    marketType: 'usdt_perpetual',
+    lastPrice: 0.6428,
+    changePercent: -1.02,
+  },
+  {
+    symbolId: 'binance:usdt_perpetual:DOGEUSDT',
+    symbol: 'DOGEUSDT',
+    marketType: 'usdt_perpetual',
+    lastPrice: 0.1587,
+    changePercent: 3.88,
   },
 ];
+
+export const DEFAULT_WATCHLIST_IDS: string[] = [
+  'binance:spot:BTC/USDT',
+  'binance:spot:ETH/USDT',
+  'binance:spot:SOL/USDT',
+  'binance:spot:BNB/USDT',
+  'binance:usdt_perpetual:BTCUSDT',
+  'binance:usdt_perpetual:ETHUSDT',
+];
+
+/** @deprecated Prefer MARKET_INSTRUMENTS / resolveWatchlistItems */
+export const WATCHLIST = MARKET_INSTRUMENTS;
+
+export function getInstrument(symbolId: string): WatchlistItem | undefined {
+  return MARKET_INSTRUMENTS.find((item) => item.symbolId === symbolId);
+}
+
+export function resolveWatchlistItems(ids: string[]): WatchlistItem[] {
+  return ids
+    .map((id) => getInstrument(id))
+    .filter((item): item is WatchlistItem => item != null);
+}
+
+export function searchInstruments(
+  query: string,
+  options?: { marketType?: MarketType; limit?: number },
+): WatchlistItem[] {
+  const normalized = query.trim().toLowerCase().replace(/[-_\s]/g, '');
+  const limit = options?.limit ?? 8;
+  const pool = options?.marketType
+    ? MARKET_INSTRUMENTS.filter((item) => item.marketType === options.marketType)
+    : MARKET_INSTRUMENTS;
+
+  if (!normalized) {
+    return pool.slice(0, limit);
+  }
+
+  return pool
+    .filter((item) => {
+      const symbol = item.symbol.toLowerCase().replace(/[-_\s]/g, '');
+      const id = item.symbolId.toLowerCase();
+      return symbol.includes(normalized) || id.includes(normalized);
+    })
+    .slice(0, limit);
+}
 
 export function buildOrderBook(mid: number): { bids: OrderBookLevel[]; asks: OrderBookLevel[] } {
   const bids: OrderBookLevel[] = [];

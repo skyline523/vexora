@@ -1,4 +1,4 @@
-import { WATCHLIST } from '../data/mockMarket';
+import { getInstrument } from '../data/mockMarket';
 import { useTerminalStore } from '../store/terminalStore';
 import styles from './ChartPanel.module.css';
 
@@ -6,7 +6,7 @@ export function ChartPanel() {
   const symbolId = useTerminalStore((state) => state.symbolId);
   const interval = useTerminalStore((state) => state.interval);
   const marketType = useTerminalStore((state) => state.marketType);
-  const active = WATCHLIST.find((item) => item.symbolId === symbolId);
+  const active = getInstrument(symbolId);
 
   return (
     <section className={styles.root} aria-label="Chart">

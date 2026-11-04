@@ -1,11 +1,17 @@
 import { PanelHeader } from '../components/PanelHeader';
-import { buildOrderBook, formatPrice, formatQty, WATCHLIST } from '../data/mockMarket';
+import {
+  buildOrderBook,
+  formatPrice,
+  formatQty,
+  getInstrument,
+  MARKET_INSTRUMENTS,
+} from '../data/mockMarket';
 import { useTerminalStore } from '../store/terminalStore';
 import styles from './OrderBookPanel.module.css';
 
 export function OrderBookPanel() {
   const symbolId = useTerminalStore((state) => state.symbolId);
-  const active = WATCHLIST.find((item) => item.symbolId === symbolId) ?? WATCHLIST[0]!;
+  const active = getInstrument(symbolId) ?? MARKET_INSTRUMENTS[0]!;
   const book = buildOrderBook(active.lastPrice);
   const bestAsk = book.asks[0]!;
   const bestBid = book.bids[0]!;

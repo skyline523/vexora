@@ -1,11 +1,17 @@
 import { PanelHeader } from '../components/PanelHeader';
-import { buildTrades, formatPrice, formatQty, WATCHLIST } from '../data/mockMarket';
+import {
+  buildTrades,
+  formatPrice,
+  formatQty,
+  getInstrument,
+  MARKET_INSTRUMENTS,
+} from '../data/mockMarket';
 import { useTerminalStore } from '../store/terminalStore';
 import styles from './TradesPanel.module.css';
 
 export function TradesPanel() {
   const symbolId = useTerminalStore((state) => state.symbolId);
-  const active = WATCHLIST.find((item) => item.symbolId === symbolId) ?? WATCHLIST[0]!;
+  const active = getInstrument(symbolId) ?? MARKET_INSTRUMENTS[0]!;
   const trades = buildTrades(active.lastPrice);
 
   return (
