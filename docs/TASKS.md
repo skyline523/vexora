@@ -54,34 +54,36 @@
 
 ## Task 01 — 工程初始化
 
-<badge> P0 </badge>
+<badge> P0 </badge> <badge> done </badge>
 
 预计：1 天
 
+状态：✅ 已完成
+
 ### 开发内容
 
-- [ ] 初始化 pnpm Monorepo。
-- [ ] 配置 pnpm-workspace.yaml。
-- [ ] 集成 Turborepo。
-- [ ] 创建 React + Vite 前端应用。
-- [ ] 创建 NestJS 后端应用。
-- [ ] 配置 TypeScript。
-- [ ] 配置 ESLint。
-- [ ] 配置 Prettier。
-- [ ] 配置 Vitest。
-- [ ] 配置环境变量管理。
-- [ ] 配置统一日志。
-- [ ] 配置开发启动脚本。
-- [ ] 建立基础共享 Package。
+- [x] 初始化 pnpm Monorepo。
+- [x] 配置 pnpm-workspace.yaml。
+- [x] 集成 Turborepo。
+- [x] 创建 React + Vite 前端应用。
+- [x] 创建 NestJS 后端应用。
+- [x] 配置 TypeScript。
+- [x] 配置 ESLint。
+- [x] 配置 Prettier。
+- [x] 配置 Vitest。
+- [x] 配置环境变量管理。
+- [x] 配置统一日志。
+- [x] 配置开发启动脚本。
+- [x] 建立基础共享 Package。
 
 ### 验收标准
 
-- [ ] `pnpm install` 正常。
-- [ ] `pnpm dev` 同时启动 Web 和 Server。
-- [ ] 前端可以正常访问后端 API。
-- [ ] Package 之间可以正常引用。
-- [ ] TypeScript 类型检查正常。
-- [ ] 基础测试可以运行。
+- [x] `pnpm install` 正常。
+- [x] `pnpm dev` 同时启动 Web 和 Server。
+- [x] 前端可以正常访问后端 API。
+- [x] Package 之间可以正常引用。
+- [x] TypeScript 类型检查正常。
+- [x] 基础测试可以运行。
 
 ---
 
@@ -658,9 +660,17 @@ flowchart TD
 
 ## 4. 当前开发状态
 
+状态约定：
+
+| 标记 | 含义 |
+|---|---|
+| ` `（空复选框） | 未开始 |
+| 🔄 | 进行中 |
+| ✅ | 已完成 |
+
 ### Phase 1 — 实时行情终端
 
-- [ ] Task 01 — 工程初始化
+- [x] ✅ Task 01 — 工程初始化
 - [ ] Task 02 — 终端 UI
 - [ ] Task 03 — Binance Adapter
 - [ ] Task 04 — Market Data Engine
