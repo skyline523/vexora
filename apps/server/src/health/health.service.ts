@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { APP_VERSION } from '@alpha/shared';
+import { APP_VERSION } from '@vexora/shared';
 
 export interface HealthData {
   status: 'up';

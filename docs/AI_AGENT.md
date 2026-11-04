@@ -1,4 +1,4 @@
-# Alpha Terminal — AI Agent
+# Vexora — AI Agent
 
 > Provider 适配、Tool Calling 与 Agent 执行流程
 >

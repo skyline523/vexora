@@ -1,5 +1,5 @@
 {
-  "name": "@alpha/server",
+  "name": "@vexora/server",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -11,7 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@alpha/shared": "workspace:*",
+    "@vexora/shared": "workspace:*",
     "@nestjs/common": "^11.1.6",
     "@nestjs/core": "^11.1.6",
     "@nestjs/platform-express": "^11.1.6",

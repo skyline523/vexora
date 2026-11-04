@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { APP_NAME, APP_VERSION } from '@alpha/shared';
+import { APP_NAME, APP_VERSION } from '@vexora/shared';
 import { fetchHealth, type HealthData } from './api/health';
 
 type HealthState =

@@ -4,7 +4,7 @@ export const serverEnvSchema = z.object({
   HOST: z.string().default('127.0.0.1'),
   PORT: z.coerce.number().int().positive().default(8787),
   LOCAL_SESSION_TOKEN: z.string().min(1).default('dev-token-change-me'),
-  DATABASE_URL: z.string().default('file:../../data/alpha-terminal.sqlite'),
+  DATABASE_URL: z.string().default('file:../../data/vexora.sqlite'),
   DATA_DIR: z.string().default('../../data'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 });

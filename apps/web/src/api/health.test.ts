@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type ApiResponse } from '@alpha/shared';
+import { type ApiResponse } from '@vexora/shared';
 
 describe('health response contract', () => {
   it('accepts ok payload shape', () => {

@@ -1,17 +1,17 @@
 {
-  "name": "alpha-terminal",
+  "name": "vexora",
   "private": true,
   "version": "0.1.0",
-  "description": "Alpha Terminal — local-first crypto market terminal",
+  "description": "Vexora — local-first crypto market terminal",
   "packageManager": "pnpm@10.18.3",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "dev": "pnpm run --parallel --filter @alpha/shared --filter @alpha/server --filter @alpha/web dev",
+    "dev": "pnpm run --parallel --filter @vexora/shared --filter @vexora/server --filter @vexora/web dev",
     "dev:turbo": "turbo run dev --parallel",
     "build": "turbo run build",
-    "build:all": "pnpm --filter @alpha/shared build && pnpm --filter @alpha/server build && pnpm --filter @alpha/web build",
+    "build:all": "pnpm --filter @vexora/shared build && pnpm --filter @vexora/server build && pnpm --filter @vexora/web build",
     "test": "pnpm -r --if-present test",
     "test:turbo": "turbo run test",
     "lint": "pnpm -r --if-present lint",

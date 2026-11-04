@@ -1,10 +1,10 @@
-# Alpha Terminal — Product Requirements Document
+# Vexora — Product Requirements Document
 
 > 产品需求文档（PRD）
 >
 > Version: 1.0.0  
 > Status: Draft  
-> Project: Alpha Terminal
+> Project: Vexora
 
 ---
 
@@ -12,7 +12,7 @@
 
 ### 1.1 项目定位
 
-Alpha Terminal 是一个本地优先的个人 AI 加密货币金融交易分析终端。
+Vexora 是一个本地优先的个人 AI 加密货币金融交易分析终端。
 
 用户可以自主配置 AI 模型和交易所数据接口，通过自然语言与 AI 交互，获取实时行情分析、技术指标解读、交易机会推荐、策略验证和历史回测等能力。
 
@@ -431,7 +431,7 @@ V1 不采用微服务，优先保证开发效率、模块边界和后续扩展�
 ### 6.3 目录结构
 
 ```text
-alpha-terminal/
+vexora/
 ├── apps/
 │   ├── web/
 │   ├── server/

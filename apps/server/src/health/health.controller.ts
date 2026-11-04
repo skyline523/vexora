@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { ok, type ApiResponse } from '@alpha/shared';
+import { ok, type ApiResponse } from '@vexora/shared';
 import { HealthService, type HealthData } from './health.service';
 
 @Controller('health')

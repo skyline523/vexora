@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     resolve: {
       alias: {
-        '@alpha/shared': path.resolve(rootDir, '../../packages/shared/src/index.ts'),
+        '@vexora/shared': path.resolve(rootDir, '../../packages/shared/src/index.ts'),
       },
     },
     server: {

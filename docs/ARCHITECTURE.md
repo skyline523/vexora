@@ -1,4 +1,4 @@
-# Alpha Terminal — Architecture
+# Vexora — Architecture
 
 > 整体架构、模块边界、依赖关系与数据流
 >
@@ -10,7 +10,7 @@
 
 ## 1. 目标
 
-本文档定义 Alpha Terminal 的系统架构，作为 Phase 1 及后续阶段开发的边界依据。
+本文档定义 Vexora 的系统架构，作为 Phase 1 及后续阶段开发的边界依据。
 
 核心目标：
 
@@ -65,7 +65,7 @@ V1 采用模块化单体：
 ## 3. 应用与包结构
 
 ```text
-alpha-terminal/
+vexora/
 ├── apps/
 │   ├── web/                 # React 交易终端 UI
 │   ├── server/              # NestJS API / WebSocket / 编排层

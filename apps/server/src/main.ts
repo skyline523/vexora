@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { config as loadEnv } from 'dotenv';
 import { resolve } from 'node:path';
 import { NestFactory } from '@nestjs/core';
-import { createLogger, serverEnvSchema } from '@alpha/shared';
+import { createLogger, serverEnvSchema } from '@vexora/shared';
 import { AppModule } from './app.module';
 
 loadEnv({ path: resolve(process.cwd(), '../../.env') });

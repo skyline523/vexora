@@ -1,4 +1,4 @@
-# Alpha Terminal — API
+# Vexora — API
 
 > 前后端 HTTP API、WebSocket 事件与请求响应结构
 >

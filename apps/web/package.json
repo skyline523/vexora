@@ -1,5 +1,5 @@
 {
-  "name": "@alpha/web",
+  "name": "@vexora/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@alpha/shared": "workspace:*",
+    "@vexora/shared": "workspace:*",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },

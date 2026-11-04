@@ -1,4 +1,4 @@
-# Alpha Terminal — Market Engine
+# Vexora — Market Engine
 
 > 行情接入、订阅管理、缓存、重连与数据补偿
 >

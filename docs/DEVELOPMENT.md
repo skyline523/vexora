@@ -1,4 +1,4 @@
-# Alpha Terminal — Development Guide
+# Vexora — Development Guide
 
 > 环境配置、开发规范、启动与测试说明
 >
@@ -42,7 +42,7 @@
 ## 3. 仓库结构（目标）
 
 ```text
-alpha-terminal/
+vexora/
 ├── apps/web
 ├── apps/server
 ├── apps/worker          # 可选，后续
@@ -94,7 +94,7 @@ pnpm dev
 HOST=127.0.0.1
 PORT=8787
 LOCAL_SESSION_TOKEN=dev-token-change-me
-DATABASE_URL=file:../../data/alpha-terminal.sqlite
+DATABASE_URL=file:../../data/vexora.sqlite
 DATA_DIR=../../data
 
 # Web
@@ -154,7 +154,7 @@ data/
 ├── market/
 ├── backtest/
 ├── exports/
-└── alpha-terminal.sqlite
+└── vexora.sqlite
 ```
 
 - `data/` 默认 gitignore（可保留 `.gitkeep`）。
@@ -176,7 +176,7 @@ data/
 
 ```bash
 pnpm test
-pnpm --filter @alpha/market-core test
+pnpm --filter @vexora/market-core test
 ```
 
 ### 8.2 E2E（Playwright）

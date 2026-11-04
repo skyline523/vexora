@@ -1,4 +1,4 @@
-import { type ApiResponse } from '@alpha/shared';
+import { type ApiResponse } from '@vexora/shared';
 
 export interface HealthData {
   status: 'up';

@@ -1,4 +1,4 @@
-# Alpha Terminal — Development Tasks
+# Vexora — Development Tasks
 
 > 开发任务与实施计划
 >

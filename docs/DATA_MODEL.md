@@ -1,4 +1,4 @@
-# Alpha Terminal — Data Model
+# Vexora — Data Model
 
 > 核心数据结构、实体关系与统一行情类型
 >

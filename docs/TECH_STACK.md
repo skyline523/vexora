@@ -1,4 +1,4 @@
-# Alpha Terminal — Tech Stack
+# Vexora — Tech Stack
 
 > 技术选型、版本基线、选型理由与替代方案
 >

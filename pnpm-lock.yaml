@@ -44,9 +44,6 @@ importers:
 
   apps/server:
     dependencies:
-      '@alpha/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@nestjs/common':
         specifier: ^11.1.6
         version: 11.2.8(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -56,6 +53,9 @@ importers:
       '@nestjs/platform-express':
         specifier: ^11.1.6
         version: 11.2.8(@nestjs/common@11.2.8(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.8)
+      '@vexora/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       dotenv:
         specifier: ^17.2.3
         version: 17.4.2
@@ -87,7 +87,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@alpha/shared':
+      '@vexora/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       react:

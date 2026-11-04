@@ -1,4 +1,4 @@
-# Alpha Terminal — Backtest Engine
+# Vexora — Backtest Engine
 
 > 回测模型、订单模拟、手续费、滑点与绩效计算
 >
