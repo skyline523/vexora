@@ -1,0 +1,14 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "outDir": "dist",
+    "rootDir": "src",
+    "composite": true,
+    "noEmit": false,
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": ["src/**/*"],
+  "references": [{ "path": "../../shared" }]
+}

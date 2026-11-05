@@ -124,41 +124,43 @@
 
 ## Task 03 — Exchange Adapter：Binance
 
-<badge> P0 </badge>
+<badge> P0 </badge> <badge> done </badge>
 
 预计：2–3 天
 
+状态：✅ 已完成
+
 ### 开发内容
 
-- [ ] 定义统一 ExchangeAdapter 接口。
-- [ ] 定义 ExchangeInfo 类型。
-- [ ] 定义 Ticker 类型。
-- [ ] 定义 Kline 类型。
-- [ ] 定义 Trade 类型。
-- [ ] 定义 OrderBook 类型。
-- [ ] 接入 Binance REST API。
-- [ ] 获取交易所交易品种信息。
-- [ ] 获取实时 Ticker。
-- [ ] 获取历史 K 线。
-- [ ] 接入 Binance WebSocket。
-- [ ] 订阅实时 K 线。
-- [ ] 订阅实时成交。
-- [ ] 获取订单簿 Snapshot。
-- [ ] 实现 WebSocket 连接管理。
-- [ ] 实现自动重连。
-- [ ] 实现订阅和取消订阅。
-- [ ] 实现异常处理和限频控制。
+- [x] 定义统一 ExchangeAdapter 接口。
+- [x] 定义 ExchangeInfo 类型。
+- [x] 定义 Ticker 类型。
+- [x] 定义 Kline 类型。
+- [x] 定义 Trade 类型。
+- [x] 定义 OrderBook 类型。
+- [x] 接入 Binance REST API。
+- [x] 获取交易所交易品种信息。
+- [x] 获取实时 Ticker。
+- [x] 获取历史 K 线。
+- [x] 接入 Binance WebSocket。
+- [x] 订阅实时 K 线。
+- [x] 订阅实时成交。
+- [x] 获取订单簿 Snapshot。
+- [x] 实现 WebSocket 连接管理。
+- [x] 实现自动重连。
+- [x] 实现订阅和取消订阅。
+- [x] 实现异常处理和限频控制。
 
 ### 验收标准
 
-- [ ] 可以获取 Binance 现货交易品种。
-- [ ] 可以获取 Binance USDT 永续交易品种。
-- [ ] 可以正常获取历史 K 线。
-- [ ] 可以订阅实时 K 线。
-- [ ] 可以订阅实时成交。
-- [ ] 断开网络后可以自动恢复连接。
-- [ ] 交易对切换后旧订阅正确释放。
-- [ ] 不存在明显重复和乱序行情问题。
+- [x] 可以获取 Binance 现货交易品种。
+- [x] 可以获取 Binance USDT 永续交易品种。
+- [x] 可以正常获取历史 K 线。
+- [x] 可以订阅实时 K 线。
+- [x] 可以订阅实时成交。
+- [x] 断开网络后可以自动恢复连接。
+- [x] 交易对切换后旧订阅正确释放。
+- [x] 不存在明显重复和乱序行情问题。
 
 ---
 
@@ -674,7 +676,7 @@ flowchart TD
 
 - [x] ✅ Task 01 — 工程初始化
 - [x] ✅ Task 02 — 终端 UI
-- [ ] Task 03 — Binance Adapter
+- [x] ✅ Task 03 — Binance Adapter
 - [ ] Task 04 — Market Data Engine
 - [ ] Task 05 — Chart Engine
 - [ ] Task 06 — SQLite
