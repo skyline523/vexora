@@ -22,4 +22,5 @@ export {
   type Trade,
 } from './types';
 
+export { KLINE_INTERVAL_MS, intervalToMs } from './interval';
 export { buildSymbolId, createMarketSymbol, parseSymbolId } from './symbols';

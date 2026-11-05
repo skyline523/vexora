@@ -197,6 +197,7 @@ export interface ExchangeAdapter {
     sink: MarketSink,
   ): Subscription;
   subscribeTrades(symbol: MarketSymbol, sink: MarketSink): Subscription;
+  subscribeTicker?(symbol: MarketSymbol, sink: MarketSink): Subscription;
   subscribeOrderBook?(symbol: MarketSymbol, sink: MarketSink): Subscription;
 
   disconnect(): Promise<void>;

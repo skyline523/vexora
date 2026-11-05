@@ -26,6 +26,8 @@
 - 不把全量实时行情写入 SQLite。
 - 不执行交易。
 
+实现位于 `packages/market-core`（`@vexora/market-core`）。`ExchangeAdapter` 由调用方注入，引擎只依赖 `@vexora/shared` 中的统一类型。
+
 ---
 
 ## 2. 组件结构
@@ -180,6 +182,8 @@ V1 建议：
 
 若 `nextOpenTime - prevOpenTime > intervalMs`，生成 `GapInfo`。
 
+`GapInfo` 使用半开区间：缺失 K 线满足 `fromOpenTime <= openTime < toOpenTime`。`toOpenTime` 是缺口后第一根已有 K 线的 `openTime`；重连补偿时则为当前未收盘 K 线的 `openTime`。
+
 ### 7.2 补偿
 
 `GapFiller`：
@@ -236,13 +240,13 @@ V1 建议：
 
 ## 11. 测试清单
 
-- [ ] Spot / Perp 同名交易对缓存不串扰
-- [ ] 订阅引用计数归零后底层退订
-- [ ] 断网恢复后自动重连并补齐缺口
-- [ ] 历史 + 实时衔接无重复 K 线
-- [ ] 向前加载不破坏当前实时更新
-- [ ] 切换 symbol/interval 后无旧数据残留
-- [ ] 连续运行内存稳定（系列长度有上限）
+- [x] Spot / Perp 同名交易对缓存不串扰
+- [x] 订阅引用计数归零后底层退订
+- [x] 断网恢复后自动重连并补齐缺口
+- [x] 历史 + 实时衔接无重复 K 线
+- [x] 向前加载不破坏当前实时更新
+- [x] 切换 symbol/interval 后无旧数据残留
+- [x] 连续运行内存稳定（系列长度有上限）
 
 ---
 
