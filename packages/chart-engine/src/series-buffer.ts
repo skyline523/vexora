@@ -23,6 +23,45 @@ function mergeKlines(current: readonly Kline[], incoming: readonly Kline[]): Kli
   return [...byOpen.values()].sort((left, right) => left.openTime - right.openTime);
 }
 
+export function visibleHighLow(
+  klines: readonly { high: number; low: number }[],
+  range: { from: number; to: number } | null,
+): { high: number; low: number; highIndex: number; lowIndex: number } | null {
+  const count = klines.length;
+  if (count === 0) return null;
+
+  let start = 0;
+  let end = count - 1;
+  if (range) {
+    start = Math.max(0, Math.floor(range.from));
+    end = Math.min(count - 1, Math.ceil(range.to));
+    if (end < start) {
+      start = Math.max(0, Math.min(count - 1, Math.floor(range.from)));
+      end = start;
+    }
+  }
+
+  const first = klines[start];
+  if (!first) return null;
+  let high = first.high;
+  let low = first.low;
+  let highIndex = start;
+  let lowIndex = start;
+  for (let index = start + 1; index <= end; index += 1) {
+    const row = klines[index];
+    if (!row) continue;
+    if (row.high >= high) {
+      high = row.high;
+      highIndex = index;
+    }
+    if (row.low <= low) {
+      low = row.low;
+      lowIndex = index;
+    }
+  }
+  return { high, low, highIndex, lowIndex };
+}
+
 function lowerBound(series: readonly Kline[], openTime: number): number {
   let lo = 0;
   let hi = series.length;
@@ -45,6 +84,41 @@ export class KlineSeriesBuffer {
 
   getAll(): Kline[] {
     return this.candles.map((kline) => ({ ...kline }));
+  }
+
+  size(): number {
+    return this.candles.length;
+  }
+
+  first(): Kline | undefined {
+    const kline = this.candles[0];
+    return kline ? { ...kline } : undefined;
+  }
+
+  findByOpenTime(openTime: number): Kline | undefined {
+    const index = lowerBound(this.candles, openTime);
+    const row = this.candles[index];
+    if (!row || row.openTime !== openTime) return undefined;
+    return row;
+  }
+
+  visibleExtremes(range: { from: number; to: number } | null): {
+    high: number;
+    highOpenTime: number;
+    low: number;
+    lowOpenTime: number;
+  } | null {
+    const found = visibleHighLow(this.candles, range);
+    if (!found) return null;
+    const highRow = this.candles[found.highIndex];
+    const lowRow = this.candles[found.lowIndex];
+    if (!highRow || !lowRow) return null;
+    return {
+      high: found.high,
+      highOpenTime: highRow.openTime,
+      low: found.low,
+      lowOpenTime: lowRow.openTime,
+    };
   }
 
   last(): Kline | undefined {

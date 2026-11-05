@@ -108,6 +108,102 @@ function normalizeIndicators(indicators: readonly ChartIndicator[]): ChartIndica
   return INDICATOR_ORDER.filter((indicator) => selected.has(indicator));
 }
 
+const LEGEND_STYLE_ID = 'vx-chart-legend-style';
+
+function ensureLegendStyle(): void {
+  if (document.getElementById(LEGEND_STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = LEGEND_STYLE_ID;
+  style.textContent = `
+    .vx-ohlc {
+      position: absolute;
+      z-index: 4;
+      top: 8px;
+      left: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 10px;
+      max-width: calc(100% - 72px);
+      padding: 4px 8px;
+      pointer-events: none;
+      font-family: "IBM Plex Mono", Consolas, monospace;
+      font-size: 11px;
+      line-height: 1.45;
+      color: #9aabc2;
+      background: rgba(13, 19, 27, 0.86);
+    }
+    .vx-ohlc b { font-weight: 560; color: #e7eef8; }
+    .vx-ohlc .up { color: #2fbf71; }
+    .vx-ohlc .down { color: #ef5b5b; }
+    .vx-extreme {
+      position: absolute;
+      z-index: 4;
+      display: none;
+      align-items: center;
+      height: 0;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .vx-extreme-line {
+      width: 14px;
+      height: 1px;
+      background: #e7eef8;
+      flex: none;
+    }
+    .vx-extreme-text {
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      font-size: 11px;
+      line-height: 14px;
+      color: #e7eef8;
+    }
+    .vx-extreme.is-left { flex-direction: row-reverse; }
+  `;
+  document.head.appendChild(style);
+}
+
+function formatPrice(value: number): string {
+  const digits = value >= 1000 ? 2 : value >= 1 ? 4 : 6;
+  return value.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: digits,
+  });
+}
+
+function formatVolume(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(2)}K`;
+  return value.toFixed(2);
+}
+
+function formatCandleTime(openTime: number): string {
+  const date = new Date(openTime);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  return `${month}-${day} ${hour}:${minute}`;
+}
+
+function createExtremeCallout(): HTMLDivElement {
+  const element = document.createElement('div');
+  element.className = 'vx-extreme';
+  const line = document.createElement('span');
+  line.className = 'vx-extreme-line';
+  const text = document.createElement('span');
+  text.className = 'vx-extreme-text';
+  element.append(line, text);
+  return element;
+}
+
+function fadeChart(container: HTMLElement): void {
+  container.style.transition = 'none';
+  container.style.opacity = '0.45';
+  requestAnimationFrame(() => {
+    container.style.transition = 'opacity 240ms ease';
+    container.style.opacity = '1';
+  });
+}
+
 export function createMarketChart(
   container: HTMLElement,
   options: MarketChartOptions = {},
@@ -300,11 +396,171 @@ export function createMarketChart(
     }
   };
 
+  ensureLegendStyle();
+  if (getComputedStyle(container).position === 'static') {
+    container.style.position = 'relative';
+  }
+  const legend = document.createElement('div');
+  legend.className = 'vx-ohlc';
+  legend.style.display = 'none';
+  const legendTime = document.createElement('span');
+  const legendOpen = document.createElement('b');
+  const legendHigh = document.createElement('b');
+  const legendLow = document.createElement('b');
+  const legendClose = document.createElement('b');
+  const legendChange = document.createElement('span');
+  const legendVolume = document.createElement('b');
+  for (const [label, node] of [
+    ['O', legendOpen],
+    ['H', legendHigh],
+    ['L', legendLow],
+    ['C', legendClose],
+  ] as const) {
+    const item = document.createElement('span');
+    item.append(label, ' ', node);
+    legend.append(item);
+  }
+  legend.prepend(legendTime);
+  const legendVolumeLabel = document.createElement('span');
+  legendVolumeLabel.append('Vol ', legendVolume);
+  legend.append(legendChange, legendVolumeLabel);
+  container.append(legend);
+
+  const showLegend = (row: Kline): void => {
+    const delta = row.close - row.open;
+    const percent = row.open === 0 ? 0 : (delta / row.open) * 100;
+    const direction = delta >= 0 ? 'up' : 'down';
+    legendTime.textContent = formatCandleTime(row.openTime);
+    legendOpen.textContent = formatPrice(row.open);
+    legendHigh.textContent = formatPrice(row.high);
+    legendLow.textContent = formatPrice(row.low);
+    legendClose.textContent = formatPrice(row.close);
+    legendClose.className = direction;
+    legendChange.className = direction;
+    legendChange.textContent = `${delta >= 0 ? '+' : ''}${formatPrice(delta)} (${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%)`;
+    legendVolume.textContent = formatVolume(row.volume);
+    legend.style.display = 'flex';
+  };
+
+  const hideLegend = (): void => {
+    legend.style.display = 'none';
+  };
+
+  let pointerInside = false;
+  const showCandleAt = (seconds: number | null): void => {
+    const row =
+      seconds == null ? buffer.last() : (buffer.findByOpenTime(seconds * 1000) ?? buffer.last());
+    if (!row) {
+      hideLegend();
+      return;
+    }
+    showLegend(row);
+  };
+  const onEnter = (): void => {
+    pointerInside = true;
+    showCandleAt(null);
+  };
+  const onLeave = (): void => {
+    pointerInside = false;
+    hideLegend();
+  };
+  container.addEventListener('pointerenter', onEnter);
+  container.addEventListener('pointerleave', onLeave);
+
+  const onCrosshair = (param: { point?: { x: number; y: number }; time?: unknown }): void => {
+    if (!pointerInside && !param.point) {
+      hideLegend();
+      return;
+    }
+    showCandleAt(typeof param.time === 'number' ? param.time : null);
+  };
+  chart.subscribeCrosshairMove(onCrosshair);
+
+  const highCallout = createExtremeCallout();
+  const lowCallout = createExtremeCallout();
+  container.append(highCallout, lowCallout);
+  let calloutFrame = 0;
+
+  const placeCallout = (
+    element: HTMLDivElement,
+    x: number,
+    y: number,
+    plotLeft: number,
+    plotRight: number,
+    paneTop: number,
+    paneBottom: number,
+  ): void => {
+    element.style.display = 'flex';
+    element.style.left = `${x}px`;
+    element.style.top = `${y}px`;
+    element.classList.remove('is-left');
+    element.style.transform = 'translate(0, -50%)';
+
+    const width = element.offsetWidth;
+    const height = element.offsetHeight;
+    const margin = 4;
+    const overflowRight = x + width > plotRight - margin;
+    const overflowLeft = x - width < plotLeft + margin;
+    const placeLeft = overflowRight && (!overflowLeft || x > (plotLeft + plotRight) / 2);
+    element.classList.toggle('is-left', placeLeft);
+
+    let shiftY = -height / 2;
+    if (y + shiftY < paneTop + margin) shiftY = paneTop + margin - y;
+    if (y + shiftY + height > paneBottom - margin) shiftY = paneBottom - margin - height - y;
+    element.style.transform = placeLeft ? `translate(-100%, ${shiftY}px)` : `translate(0, ${shiftY}px)`;
+  };
+
+  const hideCallout = (element: HTMLDivElement): void => {
+    element.style.display = 'none';
+  };
+
+  const syncExtremeCallouts = (): void => {
+    cancelAnimationFrame(calloutFrame);
+    calloutFrame = requestAnimationFrame(() => {
+      const extremes = buffer.visibleExtremes(chart.timeScale().getVisibleLogicalRange());
+      const pane = chart.panes()[0]?.getHTMLElement();
+      if (!extremes || !pane) {
+        hideCallout(highCallout);
+        hideCallout(lowCallout);
+        return;
+      }
+
+      const paneTop = pane.offsetTop;
+      const paneBottom = paneTop + pane.clientHeight;
+      const plotLeft = 0;
+      const plotRight = Math.max(0, container.clientWidth - chart.priceScale('right').width());
+      const highX = chart.timeScale().timeToCoordinate(toTime(extremes.highOpenTime));
+      const lowX = chart.timeScale().timeToCoordinate(toTime(extremes.lowOpenTime));
+      const highY = candles.priceToCoordinate(extremes.high);
+      const lowY = candles.priceToCoordinate(extremes.low);
+
+      const show = (
+        element: HTMLDivElement,
+        x: number | null,
+        y: number | null,
+        text: string,
+      ): void => {
+        if (x == null || y == null || x < plotLeft || x > plotRight) {
+          hideCallout(element);
+          return;
+        }
+        const textNode = element.querySelector('.vx-extreme-text');
+        if (textNode) textNode.textContent = text;
+        placeCallout(element, x, y + paneTop, plotLeft, plotRight, paneTop, paneBottom);
+      };
+
+      show(highCallout, highX, highY, formatPrice(extremes.high));
+      show(lowCallout, lowX, lowY, formatPrice(extremes.low));
+    });
+  };
+
   const onRange = (range: LogicalRange | null): void => {
-    if (!range || buffer.getAll().length < 2) return;
+    syncExtremeCallouts();
+    if (!range || buffer.size() < 2) return;
     if (range.from < 8) options.onReachStart?.();
   };
   chart.timeScale().subscribeVisibleLogicalRangeChange(onRange);
+  chart.timeScale().subscribeSizeChange(syncExtremeCallouts);
 
   const coalescer = new RealtimeCoalescer(animationFrameScheduler, (batch) => {
     let reload = false;
@@ -313,22 +569,37 @@ export function createMarketChart(
     }
     if (reload) {
       paintAll();
-      return;
+    } else {
+      for (const kline of batch) {
+        candles.update(toCandle(kline));
+        volume.update(toVolume(kline));
+      }
+      paintStudies();
     }
-    for (const kline of batch) {
-      candles.update(toCandle(kline));
-      volume.update(toVolume(kline));
-    }
-    paintStudies();
+    syncExtremeCallouts();
   });
+
+  let shownSeries: { symbolId: string; interval: string } | null = null;
 
   rebuildStudies();
 
   return {
     setHistory(klines) {
+      const next = klines[0];
+      if (
+        shownSeries &&
+        next &&
+        (shownSeries.symbolId !== next.symbolId || shownSeries.interval !== next.interval)
+      ) {
+        fadeChart(container);
+      }
+      if (next) {
+        shownSeries = { symbolId: next.symbolId, interval: next.interval };
+      }
       coalescer.cancel();
       buffer.reset(klines);
       paintAll();
+      syncExtremeCallouts();
     },
     prependHistory(klines) {
       const range = chart.timeScale().getVisibleLogicalRange();
@@ -340,6 +611,7 @@ export function createMarketChart(
           to: range.to + added,
         });
       }
+      syncExtremeCallouts();
       return added;
     },
     applyRealtime(kline) {
@@ -354,8 +626,16 @@ export function createMarketChart(
       return buffer.getAll();
     },
     destroy() {
+      cancelAnimationFrame(calloutFrame);
       coalescer.cancel();
+      chart.unsubscribeCrosshairMove(onCrosshair);
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(onRange);
+      chart.timeScale().unsubscribeSizeChange(syncExtremeCallouts);
+      highCallout.remove();
+      lowCallout.remove();
+      container.removeEventListener('pointerenter', onEnter);
+      container.removeEventListener('pointerleave', onLeave);
+      legend.remove();
       chart.remove();
     },
   };

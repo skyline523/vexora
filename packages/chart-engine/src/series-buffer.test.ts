@@ -1,6 +1,6 @@
 import type { Kline } from '@vexora/shared';
 import { describe, expect, it } from 'vitest';
-import { KlineSeriesBuffer } from './series-buffer';
+import { KlineSeriesBuffer, visibleHighLow } from './series-buffer';
 
 function bar(openTime: number, close: number, patch: Partial<Kline> = {}): Kline {
   return {
@@ -47,6 +47,28 @@ describe('KlineSeriesBuffer', () => {
     const added = buffer.prepend([bar(0, 1), bar(60_000, 2), bar(120_000, 8, { receivedAt: 1 })]);
     expect(added).toBe(2);
     expect(buffer.getAll()[2]?.close).toBe(3);
+  });
+
+  it('reads the high and low of the visible window', () => {
+    const rows = [
+      { high: 5, low: 1 },
+      { high: 9, low: 4 },
+      { high: 7, low: 2 },
+      { high: 6, low: 3 },
+    ];
+    expect(visibleHighLow(rows, { from: 1, to: 3 })).toEqual({
+      high: 9,
+      low: 2,
+      highIndex: 1,
+      lowIndex: 2,
+    });
+    expect(visibleHighLow(rows, null)).toEqual({
+      high: 9,
+      low: 1,
+      highIndex: 1,
+      lowIndex: 0,
+    });
+    expect(visibleHighLow([], null)).toBeNull();
   });
 
   it('does not let an in-progress tick reopen a closed candle', () => {
