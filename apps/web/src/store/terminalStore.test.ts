@@ -13,7 +13,7 @@ describe('terminalStore', () => {
       watchlistIds: [
         'binance:spot:BTC/USDT',
         'binance:spot:ETH/USDT',
-        'binance:usdt_perpetual:BTCUSDT',
+        'binance:usdt_perpetual:BTC/USDT',
       ],
     });
   });

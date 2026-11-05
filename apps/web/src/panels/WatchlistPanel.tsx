@@ -7,6 +7,7 @@ import {
   resolveWatchlistItems,
   searchInstruments,
 } from '../data/mockMarket';
+import { useQuoteStore, useWatchlistQuotes } from '../market/quotes';
 import { useTerminalStore } from '../store/terminalStore';
 import styles from './WatchlistPanel.module.css';
 
@@ -26,6 +27,8 @@ export function WatchlistPanel() {
     () => resolveWatchlistItems(watchlistIds).filter((item) => item.marketType === marketType),
     [watchlistIds, marketType],
   );
+  const quotes = useQuoteStore((state) => state.quotes);
+  useWatchlistQuotes(items.map((item) => item.symbolId));
 
   const results = useMemo(
     () => searchInstruments(query, { marketType, limit: 8 }),
@@ -80,7 +83,10 @@ export function WatchlistPanel() {
               ) : (
                 results.map((item) => {
                   const inList = watchlistIds.includes(item.symbolId);
-                  const changeClass = item.changePercent >= 0 ? styles.up : styles.down;
+                  const quote = quotes[item.symbolId];
+                  const lastPrice = quote?.lastPrice ?? item.lastPrice;
+                  const changePercent = quote?.changePercent ?? item.changePercent;
+                  const changeClass = changePercent >= 0 ? styles.up : styles.down;
                   return (
                     <button
                       key={item.symbolId}
@@ -100,13 +106,13 @@ export function WatchlistPanel() {
                     >
                       <span className={styles.symbol}>{item.symbol}</span>
                       <span className={`${styles.price} ${changeClass}`}>
-                        {formatPrice(item.lastPrice)}
+                        {formatPrice(lastPrice)}
                       </span>
                       <span className={styles.market}>
                         {item.marketType === 'spot' ? 'Spot' : 'Perp'}
                       </span>
                       <span className={`${styles.change} ${changeClass}`}>
-                        {formatPercent(item.changePercent)}
+                        {formatPercent(changePercent)}
                       </span>
                     </button>
                   );
@@ -123,7 +129,10 @@ export function WatchlistPanel() {
         ) : (
           items.map((item) => {
             const active = item.symbolId === symbolId;
-            const changeClass = item.changePercent >= 0 ? styles.up : styles.down;
+            const quote = quotes[item.symbolId];
+            const lastPrice = quote?.lastPrice ?? item.lastPrice;
+            const changePercent = quote?.changePercent ?? item.changePercent;
+            const changeClass = changePercent >= 0 ? styles.up : styles.down;
             return (
               <li key={item.symbolId} className={styles.row}>
                 <button
@@ -133,13 +142,13 @@ export function WatchlistPanel() {
                 >
                   <span className={styles.symbol}>{item.symbol}</span>
                   <span className={`${styles.price} ${changeClass}`}>
-                    {formatPrice(item.lastPrice)}
+                    {formatPrice(lastPrice)}
                   </span>
                   <span className={styles.market}>
                     {item.marketType === 'spot' ? 'Spot' : 'Perp'}
                   </span>
                   <span className={`${styles.change} ${changeClass}`}>
-                    {formatPercent(item.changePercent)}
+                    {formatPercent(changePercent)}
                   </span>
                 </button>
                 <button

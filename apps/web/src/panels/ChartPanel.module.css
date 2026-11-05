@@ -34,57 +34,63 @@
   color: var(--vx-text-muted);
 }
 
+.indicators {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.indicator,
+.indicatorOn {
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--vx-border);
+  background: transparent;
+  color: var(--vx-text-muted);
+  cursor: pointer;
+}
+
+.indicatorOn {
+  color: var(--vx-text);
+  border-color: var(--vx-accent);
+  background: var(--vx-accent-soft);
+}
+
 .canvas {
   position: relative;
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(61, 139, 253, 0.04), transparent 28%),
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 39px,
-      rgba(34, 48, 68, 0.45) 40px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 79px,
-      rgba(34, 48, 68, 0.35) 80px
-    ),
-    var(--vx-bg-panel);
+  background: var(--vx-bg-panel);
 }
 
-.placeholder {
+.host {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-content: center;
-  gap: 6px;
-  text-align: center;
-  padding: 24px;
-  pointer-events: none;
 }
 
-.placeholder strong {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--vx-text);
-}
-
-.placeholder p {
+.error {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
   margin: 0;
-  max-width: 360px;
-  color: var(--vx-text-muted);
+  padding: 8px 10px;
+  border: 1px solid var(--vx-down);
+  background: var(--vx-down-soft);
+  color: var(--vx-text);
   font-size: 12px;
 }
 
-.spark {
-  position: absolute;
-  left: 8%;
-  right: 8%;
-  bottom: 18%;
-  height: 42%;
-  opacity: 0.55;
+.loading,
+.reconnecting {
+  color: var(--vx-text-muted);
+}
+
+.live {
+  color: var(--vx-up);
+}
+
+.errorStatus {
+  color: var(--vx-down);
 }

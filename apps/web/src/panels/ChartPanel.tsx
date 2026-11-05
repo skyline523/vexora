@@ -1,11 +1,48 @@
+import { useRef, useState } from 'react';
+import { CHART_INDICATORS, type ChartIndicator } from '@vexora/chart-engine';
 import { getInstrument } from '../data/mockMarket';
+import { useTerminalChart, type StreamStatus } from '../chart/useTerminalChart';
 import { useTerminalStore } from '../store/terminalStore';
 import styles from './ChartPanel.module.css';
+
+const INDICATOR_LABEL: Record<ChartIndicator, string> = {
+  ma: 'MA',
+  ema: 'EMA',
+  macd: 'MACD',
+  rsi: 'RSI',
+};
+
+const STATUS_LABEL: Record<StreamStatus, string> = {
+  loading: 'Loading',
+  live: 'Live',
+  reconnecting: 'Reconnecting',
+  error: 'Error',
+};
+
+function statusClass(status: StreamStatus): string {
+  if (status === 'live') return styles.live ?? '';
+  if (status === 'error') return styles.errorStatus ?? '';
+  if (status === 'reconnecting') return styles.reconnecting ?? '';
+  return styles.loading ?? '';
+}
+
+function toggleIndicator(
+  current: readonly ChartIndicator[],
+  indicator: ChartIndicator,
+): ChartIndicator[] {
+  if (current.includes(indicator)) {
+    return current.filter((item) => item !== indicator);
+  }
+  return CHART_INDICATORS.filter((item) => item === indicator || current.includes(item));
+}
 
 export function ChartPanel() {
   const symbolId = useTerminalStore((state) => state.symbolId);
   const interval = useTerminalStore((state) => state.interval);
   const marketType = useTerminalStore((state) => state.marketType);
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [indicators, setIndicators] = useState<ChartIndicator[]>([]);
+  const { status, error } = useTerminalChart(hostRef, symbolId, interval, indicators);
   const active = getInstrument(symbolId);
 
   return (
@@ -16,28 +53,30 @@ export function ChartPanel() {
           <span>{active?.symbol ?? '—'}</span>
           <span>{interval}</span>
           <span>{marketType === 'spot' ? 'Spot' : 'USDT-M'}</span>
+          <span className={statusClass(status)} data-chart-status={status}>
+            {STATUS_LABEL[status]}
+          </span>
+        </div>
+        <div className={styles.indicators} role="group" aria-label="Indicators">
+          {CHART_INDICATORS.map((indicator) => {
+            const pressed = indicators.includes(indicator);
+            return (
+              <button
+                key={indicator}
+                type="button"
+                className={pressed ? styles.indicatorOn : styles.indicator}
+                aria-pressed={pressed}
+                onClick={() => setIndicators((current) => toggleIndicator(current, indicator))}
+              >
+                {INDICATOR_LABEL[indicator]}
+              </button>
+            );
+          })}
         </div>
       </div>
-      <div className={styles.canvas} data-chart-host="true">
-        <svg className={styles.spark} viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden>
-          <polyline
-            fill="none"
-            stroke="#3d8bfd"
-            strokeWidth="1.2"
-            points="0,28 8,24 16,30 24,18 32,22 40,14 48,20 56,12 64,16 72,10 80,15 88,8 100,12"
-          />
-          <polyline
-            fill="none"
-            stroke="#2fbf71"
-            strokeOpacity="0.55"
-            strokeWidth="1"
-            points="0,34 10,32 20,33 30,29 40,31 50,27 60,28 70,24 80,26 90,22 100,23"
-          />
-        </svg>
-        <div className={styles.placeholder}>
-          <strong>K-line workspace</strong>
-          <p>Chart engine mounts here in Task 05. Layout and symbol/interval controls are ready.</p>
-        </div>
+      <div className={styles.canvas}>
+        <div ref={hostRef} className={styles.host} aria-label="Price chart" />
+        {error ? <p className={styles.error}>{error}</p> : null}
       </div>
     </section>
   );

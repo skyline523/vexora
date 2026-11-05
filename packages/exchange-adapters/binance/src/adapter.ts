@@ -20,14 +20,17 @@ import {
   mapRestKline,
   mapTicker,
   mapWsKline,
+  mapWsTicker,
   mapWsTrade,
   streamNameForKline,
+  streamNameForTicker,
   streamNameForTrade,
   type RawDepth,
   type RawExchangeInfo,
   type RawKline,
   type RawTicker24hr,
   type RawWsKlineEvent,
+  type RawWsTickerEvent,
   type RawWsTradeEvent,
 } from './mappers';
 import { resolveProxyUrl, resolveProxyUrlAsync } from './proxy';
@@ -215,6 +218,20 @@ export class BinanceAdapter implements ExchangeAdapter {
         });
       },
     );
+    return { unsubscribe };
+  }
+
+  subscribeTicker(symbol: MarketSymbol, sink: MarketSink): Subscription {
+    assertBinanceSymbol(symbol);
+    const stream = streamNameForTicker(symbol.rawSymbol);
+    const unsubscribe = this.ws.subscribe(symbol.marketType, stream, (payload) => {
+      const event = payload as RawWsTickerEvent;
+      if (!event || event.e !== '24hrTicker') return;
+      sink({
+        type: 'ticker',
+        payload: mapWsTicker(event, symbol),
+      });
+    });
     return { unsubscribe };
   }
 

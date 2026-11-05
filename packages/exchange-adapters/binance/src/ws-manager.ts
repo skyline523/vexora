@@ -15,7 +15,6 @@ import {
   WS_RECONNECT_DELAYS_MS,
 } from './constants';
 import { createWsProxyAgent, resolveProxyUrl } from './proxy';
-import { createTlsThroughProxy, inferSocksFromHttpProxy } from './tunnel';
 
 const nodeRequire = createRequire(__filename);
 type WsCtor = new (
@@ -53,26 +52,11 @@ function createDefaultWsFactory(proxyUrl?: string): WsFactory {
     return (url) => new WebSocketNode(url) as unknown as WebSocket;
   }
 
-  return async (url) => {
-    const parsed = new URL(url);
-    try {
-      const socket = await createTlsThroughProxy({
-        targetHost: parsed.hostname,
-        targetPort: Number(parsed.port || 443),
-        httpProxyUrl: resolvedProxy,
-        socksProxy: inferSocksFromHttpProxy(resolvedProxy),
-      });
-      // Socket is already TLS. Use ws:// so the `ws` package does not wrap TLS twice.
-      const wsUrl = `ws://${parsed.host}${parsed.pathname}${parsed.search}`;
-      return new WebSocketNode(wsUrl, { socket }) as unknown as WebSocket;
-    } catch {
-      // Fallback to agent-based CONNECT if manual tunnel fails.
-      const agent = createWsProxyAgent(resolvedProxy);
-      return new WebSocketNode(
-        url,
-        agent ? { agent } : undefined,
-      ) as unknown as WebSocket;
-    }
+  // HttpsProxyAgent matches the REST path. A hand-rolled TLS tunnel often
+  // opens and then dies, which stalls kline updates behind a live HTTP history.
+  return (url) => {
+    const agent = createWsProxyAgent(resolvedProxy);
+    return new WebSocketNode(url, agent ? { agent } : undefined) as unknown as WebSocket;
   };
 }
 
@@ -226,8 +210,12 @@ export class BinanceWsManager {
     }
 
     // Attach early to avoid unhandled 'error' when closing a CONNECTING socket.
-    ws.addEventListener('error', () => {
-      this.logger.warn('ws.error', { marketType });
+    ws.addEventListener('error', (event) => {
+      const detail = event as Event & { message?: string; error?: { message?: string } };
+      this.logger.warn('ws.error', {
+        marketType,
+        error: detail.error?.message ?? detail.message ?? 'websocket error',
+      });
     });
 
     if (this.closed) {

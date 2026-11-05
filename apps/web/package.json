@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.4",
+    "@vexora/chart-engine": "workspace:*",
     "@vexora/shared": "workspace:*",
     "antd": "^6.7.0",
     "react": "^19.1.1",

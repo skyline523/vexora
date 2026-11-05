@@ -11,7 +11,7 @@
     "dev": "pnpm run --parallel --filter @vexora/shared --filter @vexora/server --filter @vexora/web dev",
     "dev:turbo": "turbo run dev --parallel",
     "build": "turbo run build",
-    "build:all": "pnpm --filter @vexora/shared build && pnpm --filter @vexora/exchange-adapter-binance build && pnpm --filter @vexora/server build && pnpm --filter @vexora/web build",
+    "build:all": "pnpm --filter @vexora/shared build && pnpm --filter @vexora/market-core build && pnpm --filter @vexora/exchange-adapter-binance build && pnpm --filter @vexora/chart-engine build && pnpm --filter @vexora/server build && pnpm --filter @vexora/web build",
     "test": "pnpm -r --if-present test",
     "test:turbo": "turbo run test",
     "lint": "pnpm -r --if-present lint",

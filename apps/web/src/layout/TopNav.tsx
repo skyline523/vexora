@@ -7,6 +7,7 @@ import {
   MARKET_TYPE_OPTIONS,
   resolveWatchlistItems,
 } from '../data/mockMarket';
+import { useQuoteStore } from '../market/quotes';
 import { useTerminalStore } from '../store/terminalStore';
 import type { KlineInterval, MarketType } from '../types/terminal';
 import styles from './TopNav.module.css';
@@ -24,7 +25,10 @@ export function TopNav() {
     (item) => item.marketType === marketType,
   );
   const active = getInstrument(symbolId) ?? symbols[0];
-  const changeClass = (active?.changePercent ?? 0) >= 0 ? styles.up : styles.down;
+  const quote = useQuoteStore((state) => (active ? state.quotes[active.symbolId] : undefined));
+  const lastPrice = quote?.lastPrice ?? active?.lastPrice;
+  const changePercent = quote?.changePercent ?? active?.changePercent ?? 0;
+  const changeClass = changePercent >= 0 ? styles.up : styles.down;
 
   return (
     <header className={styles.nav}>
@@ -70,8 +74,8 @@ export function TopNav() {
 
       {active ? (
         <div className={styles.priceBlock}>
-          <span className={styles.price}>{formatPrice(active.lastPrice)}</span>
-          <span className={changeClass}>{formatPercent(active.changePercent)}</span>
+          <span className={styles.price}>{lastPrice == null ? '—' : formatPrice(lastPrice)}</span>
+          <span className={changeClass}>{formatPercent(changePercent)}</span>
         </div>
       ) : null}
     </header>

@@ -20,6 +20,7 @@ async function bootstrap(): Promise<void> {
     origin: ['http://127.0.0.1:5173', 'http://localhost:5173'],
   });
   app.setGlobalPrefix('api');
+  app.enableShutdownHooks();
 
   await app.listen(env.PORT, env.HOST);
   logger.info('server started', { host: env.HOST, port: env.PORT });

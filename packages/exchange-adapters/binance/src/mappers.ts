@@ -43,6 +43,21 @@ export type RawKline = [
   string, // ignore
 ];
 
+export interface RawWsTickerEvent {
+  e: '24hrTicker';
+  E: number;
+  s: string;
+  c: string;
+  o?: string;
+  h?: string;
+  l?: string;
+  v?: string;
+  q?: string;
+  P?: string;
+  b?: string;
+  a?: string;
+}
+
 export interface RawTicker24hr {
   symbol: string;
   lastPrice: string;
@@ -164,6 +179,32 @@ export function mapInstrument(
     status: mapStatus(raw.status),
     ...(marketType === 'usdt_perpetual' ? { contractType: 'usdt_perpetual' as const } : {}),
   };
+}
+
+export function mapWsTicker(
+  event: RawWsTickerEvent,
+  symbol: MarketSymbol,
+  receivedAt = Date.now(),
+): Ticker {
+  return {
+    symbolId: symbol.symbolId,
+    exchange: symbol.exchange,
+    marketType: symbol.marketType,
+    lastPrice: toNumber(event.c),
+    bidPrice: event.b != null ? toNumber(event.b) : undefined,
+    askPrice: event.a != null ? toNumber(event.a) : undefined,
+    high24h: event.h != null ? toNumber(event.h) : undefined,
+    low24h: event.l != null ? toNumber(event.l) : undefined,
+    volume24h: event.v != null ? toNumber(event.v) : undefined,
+    quoteVolume24h: event.q != null ? toNumber(event.q) : undefined,
+    priceChangePercent24h: event.P != null ? toNumber(event.P) : undefined,
+    ts: event.E,
+    receivedAt,
+  };
+}
+
+export function streamNameForTicker(rawSymbol: string): string {
+  return `${rawSymbol.toLowerCase()}@ticker`;
 }
 
 export function mapTicker(

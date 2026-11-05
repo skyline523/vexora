@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     resolve: {
       alias: {
+        '@vexora/chart-engine': path.resolve(rootDir, '../../packages/chart-engine/src/index.ts'),
         '@vexora/shared': path.resolve(rootDir, '../../packages/shared/src/index.ts'),
       },
     },
@@ -22,6 +23,11 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/api': {
           target: apiBase,
+          changeOrigin: true,
+        },
+        '/ws': {
+          target: apiBase,
+          ws: true,
           changeOrigin: true,
         },
       },
