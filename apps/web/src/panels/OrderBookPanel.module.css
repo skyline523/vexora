@@ -4,13 +4,18 @@
   height: 100%;
   min-width: 0;
   background: var(--vx-bg-panel);
-  border-right: 1px solid var(--vx-border);
 }
 
-.table {
+.tickSelect {
+  min-width: 72px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   font-family: var(--vx-mono);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
@@ -22,13 +27,12 @@
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr);
   column-gap: 8px;
   align-items: center;
-  padding: 4px 10px;
+  padding: 0 10px;
 }
 
 .head {
-  position: sticky;
-  top: 0;
-  z-index: 2;
+  flex: 0 0 auto;
+  height: 24px;
   background: var(--vx-bg-elevated);
   color: var(--vx-text-muted);
   font-size: 10px;
@@ -37,9 +41,19 @@
   border-bottom: 1px solid var(--vx-border);
 }
 
+.side {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .row {
   position: relative;
-  min-height: 22px;
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 28px;
 }
 
 .row > span:not(.bar) {
@@ -78,10 +92,10 @@
 .spread {
   display: flex;
   justify-content: space-between;
+  flex: 0 0 auto;
   padding: 6px 10px;
   border-block: 1px solid var(--vx-border);
   background: var(--vx-bg-elevated);
-  font-family: var(--vx-mono);
   font-size: 11px;
   color: var(--vx-text-secondary);
 }
@@ -90,4 +104,12 @@
 .total {
   text-align: right;
   color: var(--vx-text-secondary);
+}
+
+.empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  color: var(--vx-text-muted);
+  font-size: 12px;
 }

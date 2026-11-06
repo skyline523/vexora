@@ -6,13 +6,14 @@ import {
 } from '../data/mockMarket';
 import type { KlineInterval, MarketType } from '../types/terminal';
 
-const LAYOUT_STORAGE_KEY = 'vexora.terminal.layout.v1';
+const LAYOUT_STORAGE_KEY = 'vexora.terminal.layout.v2';
 const WATCHLIST_STORAGE_KEY = 'vexora.terminal.watchlist.v1';
 
 export interface LayoutWidths {
   watchlist: number;
   ai: number;
-  bottom: number;
+  /** Right market rail width (order book + trades). */
+  market: number;
 }
 
 interface TerminalState {
@@ -33,7 +34,7 @@ function loadLayout(): LayoutWidths {
   const fallback: LayoutWidths = {
     watchlist: 240,
     ai: 320,
-    bottom: 220,
+    market: 280,
   };
 
   try {
@@ -45,7 +46,7 @@ function loadLayout(): LayoutWidths {
     return {
       watchlist: clamp(parsed.watchlist ?? fallback.watchlist, 180, 420),
       ai: clamp(parsed.ai ?? fallback.ai, 240, 480),
-      bottom: clamp(parsed.bottom ?? fallback.bottom, 160, 360),
+      market: clamp(parsed.market ?? fallback.market, 220, 400),
     };
   } catch {
     return fallback;
@@ -127,7 +128,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     const layout = {
       watchlist: clamp(patch.watchlist ?? get().layout.watchlist, 180, 420),
       ai: clamp(patch.ai ?? get().layout.ai, 240, 480),
-      bottom: clamp(patch.bottom ?? get().layout.bottom, 160, 360),
+      market: clamp(patch.market ?? get().layout.market, 220, 400),
     };
     set({ layout });
     schedulePersist(() => get().layout);

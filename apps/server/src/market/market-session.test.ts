@@ -50,6 +50,18 @@ function fakeSource(): KlineStreamSource & {
     subscribeTicker() {
       return { id: 'sub_ticker', unsubscribe() {} };
     },
+    subscribeTrades() {
+      return { id: 'sub_trade', unsubscribe() {} };
+    },
+    subscribeOrderBook() {
+      return { id: 'sub_book', unsubscribe() {} };
+    },
+    getCachedTrades() {
+      return [];
+    },
+    getCachedOrderBook() {
+      return undefined;
+    },
     switchKlines() {
       source.switched = true;
     },
@@ -118,6 +130,37 @@ describe('MarketClientSession', () => {
     session.handleMessage(JSON.stringify({ type: 'market.unsubscribe', requestId: 'r4' }));
     source.listener?.({ type: 'kline', payload: kline(1) });
     expect(sent).toEqual(['market.subscribed', 'market.unsubscribed']);
+    session.close();
+  });
+
+  it('subscribes to trade and orderbook channels', () => {
+    const source = fakeSource();
+    const sent: Array<{ type: string; payload?: { channel?: string } }> = [];
+    const session = new MarketClientSession(source, {
+      send(data) {
+        sent.push(JSON.parse(data) as { type: string; payload?: { channel?: string } });
+      },
+    });
+
+    session.handleMessage(
+      JSON.stringify({
+        type: 'market.subscribe',
+        requestId: 't1',
+        payload: { channel: 'trade', symbolId: symbol.symbolId },
+      }),
+    );
+    session.handleMessage(
+      JSON.stringify({
+        type: 'market.subscribe',
+        requestId: 'b1',
+        payload: { channel: 'orderbook', symbolId: symbol.symbolId },
+      }),
+    );
+
+    expect(sent.map((message) => [message.type, message.payload?.channel])).toEqual([
+      ['market.subscribed', 'trade'],
+      ['market.subscribed', 'orderbook'],
+    ]);
     session.close();
   });
 });

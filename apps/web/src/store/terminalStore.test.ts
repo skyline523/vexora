@@ -9,7 +9,7 @@ describe('terminalStore', () => {
       marketType: 'spot',
       symbolId: 'binance:spot:BTC/USDT',
       interval: '15m',
-      layout: { watchlist: 240, ai: 320, bottom: 220 },
+      layout: { watchlist: 240, ai: 320, market: 280 },
       watchlistIds: [
         'binance:spot:BTC/USDT',
         'binance:spot:ETH/USDT',
@@ -30,14 +30,14 @@ describe('terminalStore', () => {
   });
 
   it('clamps and persists layout widths', () => {
-    useTerminalStore.getState().setLayout({ watchlist: 999, ai: 10, bottom: 500 });
+    useTerminalStore.getState().setLayout({ watchlist: 999, ai: 10, market: 500 });
     const state = useTerminalStore.getState();
     expect(state.layout.watchlist).toBe(420);
     expect(state.layout.ai).toBe(240);
-    expect(state.layout.bottom).toBe(360);
+    expect(state.layout.market).toBe(400);
 
     vi.advanceTimersByTime(150);
-    expect(localStorage.getItem('vexora.terminal.layout.v1')).toContain('"watchlist":420');
+    expect(localStorage.getItem('vexora.terminal.layout.v2')).toContain('"watchlist":420');
   });
 
   it('adds and removes watchlist symbols', () => {

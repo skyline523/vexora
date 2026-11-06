@@ -2,6 +2,7 @@ import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { MarketDataEngine } from '@vexora/market-core';
 import { ok } from '@vexora/shared';
 import { parseKlineQuery, type KlineQuery } from './parse-kline-query';
+import { parseOrderBookQuery, type OrderBookQuery } from './parse-orderbook-query';
 
 @Controller('markets')
 export class MarketsController {
@@ -22,5 +23,18 @@ export class MarketsController {
       interval: params.interval,
       klines,
     });
+  }
+
+  @Get('orderbook')
+  async getOrderBook(@Query() query: OrderBookQuery) {
+    let params;
+    try {
+      params = parseOrderBookQuery(query);
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : 'Bad request');
+    }
+
+    const book = await this.engine.refreshOrderBook(params.symbol, params.depth);
+    return ok(book);
   }
 }

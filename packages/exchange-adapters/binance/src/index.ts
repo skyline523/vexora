@@ -15,9 +15,11 @@ export {
   mapRestKline,
   mapTicker,
   mapWsKline,
+  mapWsPartialDepth,
   mapWsTicker,
   mapWsTrade,
   streamNameForKline,
+  streamNameForOrderBook,
   streamNameForTicker,
   streamNameForTrade,
 } from './mappers';

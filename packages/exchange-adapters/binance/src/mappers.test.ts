@@ -8,6 +8,7 @@ import {
   mapWsKline,
   mapWsTrade,
   streamNameForKline,
+  streamNameForOrderBook,
   streamNameForTrade,
 } from './mappers';
 
@@ -168,5 +169,6 @@ describe('binance mappers', () => {
   it('builds stream names', () => {
     expect(streamNameForKline('BTCUSDT', '1m')).toBe('btcusdt@kline_1m');
     expect(streamNameForTrade('ETHUSDT')).toBe('ethusdt@trade');
+    expect(streamNameForOrderBook('BTCUSDT', 20)).toBe('btcusdt@depth20@100ms');
   });
 });

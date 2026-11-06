@@ -1,5 +1,6 @@
 import { Input } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { FlashQuote } from '../components/FlashQuote';
 import { PanelHeader } from '../components/PanelHeader';
 import {
   formatPercent,
@@ -86,7 +87,6 @@ export function WatchlistPanel() {
                   const quote = quotes[item.symbolId];
                   const lastPrice = quote?.lastPrice ?? item.lastPrice;
                   const changePercent = quote?.changePercent ?? item.changePercent;
-                  const changeClass = changePercent >= 0 ? styles.up : styles.down;
                   return (
                     <button
                       key={item.symbolId}
@@ -105,15 +105,18 @@ export function WatchlistPanel() {
                       }}
                     >
                       <span className={styles.symbol}>{item.symbol}</span>
-                      <span className={`${styles.price} ${changeClass}`}>
-                        {formatPrice(lastPrice)}
-                      </span>
-                      <span className={styles.market}>
-                        {item.marketType === 'spot' ? 'Spot' : 'Perp'}
-                      </span>
-                      <span className={`${styles.change} ${changeClass}`}>
-                        {formatPercent(changePercent)}
-                      </span>
+                      <FlashQuote
+                        value={lastPrice}
+                        valueText={formatPrice(lastPrice)}
+                        percentText={formatPercent(changePercent)}
+                        valueClassName={styles.price}
+                        percentClassName={styles.change}
+                        between={
+                          <span className={styles.market}>
+                            {item.marketType === 'spot' ? 'Spot' : 'Perp'}
+                          </span>
+                        }
+                      />
                     </button>
                   );
                 })
@@ -132,7 +135,6 @@ export function WatchlistPanel() {
             const quote = quotes[item.symbolId];
             const lastPrice = quote?.lastPrice ?? item.lastPrice;
             const changePercent = quote?.changePercent ?? item.changePercent;
-            const changeClass = changePercent >= 0 ? styles.up : styles.down;
             return (
               <li key={item.symbolId} className={styles.row}>
                 <button
@@ -141,15 +143,18 @@ export function WatchlistPanel() {
                   onClick={() => setSymbolId(item.symbolId)}
                 >
                   <span className={styles.symbol}>{item.symbol}</span>
-                  <span className={`${styles.price} ${changeClass}`}>
-                    {formatPrice(lastPrice)}
-                  </span>
-                  <span className={styles.market}>
-                    {item.marketType === 'spot' ? 'Spot' : 'Perp'}
-                  </span>
-                  <span className={`${styles.change} ${changeClass}`}>
-                    {formatPercent(changePercent)}
-                  </span>
+                  <FlashQuote
+                    value={lastPrice}
+                    valueText={formatPrice(lastPrice)}
+                    percentText={formatPercent(changePercent)}
+                    valueClassName={styles.price}
+                    percentClassName={styles.change}
+                    between={
+                      <span className={styles.market}>
+                        {item.marketType === 'spot' ? 'Spot' : 'Perp'}
+                      </span>
+                    }
+                  />
                 </button>
                 <button
                   type="button"

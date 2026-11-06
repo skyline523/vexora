@@ -5,22 +5,31 @@ import {
   type MarketEvent,
   type MarketSink,
   type MarketSymbol,
+  type OrderBookSnapshot,
+  type Trade,
 } from '@vexora/shared';
 import type { EngineSubscription } from '@vexora/market-core';
 
-export interface KlineStreamSource {
+export interface MarketStreamSource {
   subscribeKlines(
     symbol: MarketSymbol,
     interval: KlineInterval,
     listener?: MarketSink,
   ): EngineSubscription;
   subscribeTicker(symbol: MarketSymbol, listener?: MarketSink): EngineSubscription;
+  subscribeTrades(symbol: MarketSymbol, listener?: MarketSink): EngineSubscription;
+  subscribeOrderBook(symbol: MarketSymbol, listener?: MarketSink): EngineSubscription;
   switchKlines(
     subscription: Pick<EngineSubscription, 'id'>,
     next: { symbol: MarketSymbol; interval: KlineInterval },
   ): void;
   subscribeEvents(listener: MarketSink): () => void;
+  getCachedTrades(symbolId: string): Trade[];
+  getCachedOrderBook(symbolId: string): OrderBookSnapshot | undefined;
 }
+
+/** @deprecated Use MarketStreamSource */
+export type KlineStreamSource = MarketStreamSource;
 
 export interface SessionSocket {
   send(data: string): void;
@@ -31,6 +40,8 @@ interface ClientEnvelope {
   requestId?: unknown;
   payload?: unknown;
 }
+
+type Channel = 'kline' | 'ticker' | 'trade' | 'orderbook';
 
 const INTERVALS = new Set<KlineInterval>([
   '1m',
@@ -51,22 +62,28 @@ function isInterval(value: string): value is KlineInterval {
   return INTERVALS.has(value as KlineInterval);
 }
 
+function isChannel(value: unknown): value is Channel {
+  return value === 'kline' || value === 'ticker' || value === 'trade' || value === 'orderbook';
+}
+
 function symbolFromId(symbolId: string): MarketSymbol {
   return createMarketSymbol(parseSymbolId(symbolId));
 }
 
 /**
- * One browser socket. K-line subscribe uses the market engine refcount,
- * and close() releases that subscription.
+ * One browser socket. Each channel keeps its own engine subscription and
+ * close() releases all of them.
  */
 export class MarketClientSession {
   private klineSubscription: EngineSubscription | null = null;
   private readonly tickerSubscriptions = new Map<string, EngineSubscription>();
+  private readonly tradeSubscriptions = new Map<string, EngineSubscription>();
+  private readonly orderbookSubscriptions = new Map<string, EngineSubscription>();
   private readonly stopEvents: () => void;
   private closed = false;
 
   constructor(
-    private readonly source: KlineStreamSource,
+    private readonly source: MarketStreamSource,
     private readonly socket: SessionSocket,
   ) {
     this.stopEvents = source.subscribeEvents((event) => {
@@ -122,13 +139,20 @@ export class MarketClientSession {
       subscription.unsubscribe();
     }
     this.tickerSubscriptions.clear();
+    for (const subscription of this.tradeSubscriptions.values()) {
+      subscription.unsubscribe();
+    }
+    this.tradeSubscriptions.clear();
+    for (const subscription of this.orderbookSubscriptions.values()) {
+      subscription.unsubscribe();
+    }
+    this.orderbookSubscriptions.clear();
     this.stopEvents();
   }
 
   private subscribe(payload: unknown, requestId: string | undefined): void {
     const body = asRecord(payload);
-    const channel = body.channel;
-    if (channel !== 'kline' && channel !== 'ticker') {
+    if (!isChannel(body.channel)) {
       throw new Error('Unsupported channel');
     }
     const symbolId = body.symbolId;
@@ -136,10 +160,20 @@ export class MarketClientSession {
       throw new Error('symbolId is required');
     }
     const symbol = symbolFromId(symbolId);
-    if (channel === 'ticker') {
+
+    if (body.channel === 'ticker') {
       this.subscribeTicker(symbol, requestId);
       return;
     }
+    if (body.channel === 'trade') {
+      this.subscribeTrades(symbol, requestId);
+      return;
+    }
+    if (body.channel === 'orderbook') {
+      this.subscribeOrderBook(symbol, requestId);
+      return;
+    }
+
     const interval = body.interval;
     if (typeof interval !== 'string' || !isInterval(interval)) {
       throw new Error('symbolId and interval are required');
@@ -185,6 +219,61 @@ export class MarketClientSession {
     });
   }
 
+  private subscribeTrades(symbol: MarketSymbol, requestId: string | undefined): void {
+    let subscription = this.tradeSubscriptions.get(symbol.symbolId);
+    if (!subscription) {
+      subscription = this.source.subscribeTrades(symbol, (event) => {
+        if (this.closed || event.type !== 'trade') return;
+        this.send({ type: 'market.trade', payload: event.payload });
+      });
+      this.tradeSubscriptions.set(symbol.symbolId, subscription);
+      // Replay cached trades (oldest → newest) so the panel is not empty on connect.
+      for (const trade of this.source.getCachedTrades(symbol.symbolId)) {
+        this.send({ type: 'market.trade', payload: trade });
+      }
+    }
+    this.send({
+      type: 'market.subscribed',
+      requestId,
+      payload: {
+        subscriptionId: subscription.id,
+        channel: 'trade',
+        symbolId: symbol.symbolId,
+      },
+    });
+  }
+
+  private subscribeOrderBook(symbol: MarketSymbol, requestId: string | undefined): void {
+    let subscription = this.orderbookSubscriptions.get(symbol.symbolId);
+    if (!subscription) {
+      subscription = this.source.subscribeOrderBook(symbol, (event) => {
+        if (this.closed) return;
+        if (event.type === 'orderbook_snapshot') {
+          this.send({ type: 'market.orderbook', payload: event.payload });
+          return;
+        }
+        if (event.type === 'orderbook_delta') {
+          // UI currently replaces on full snapshots; deltas are ignored for now.
+          return;
+        }
+      });
+      this.orderbookSubscriptions.set(symbol.symbolId, subscription);
+      const cached = this.source.getCachedOrderBook(symbol.symbolId);
+      if (cached) {
+        this.send({ type: 'market.orderbook', payload: cached });
+      }
+    }
+    this.send({
+      type: 'market.subscribed',
+      requestId,
+      payload: {
+        subscriptionId: subscription.id,
+        channel: 'orderbook',
+        symbolId: symbol.symbolId,
+      },
+    });
+  }
+
   private unsubscribe(payload: unknown, requestId: string | undefined): void {
     const subscriptionId =
       payload && typeof payload === 'object' && 'subscriptionId' in payload
@@ -199,12 +288,18 @@ export class MarketClientSession {
       return;
     }
 
-    for (const [symbolId, subscription] of this.tickerSubscriptions) {
-      if (subscription.id !== subscriptionId) continue;
-      subscription.unsubscribe();
-      this.tickerSubscriptions.delete(symbolId);
-      this.send({ type: 'market.unsubscribed', requestId, payload: { subscriptionId } });
-      return;
+    for (const map of [
+      this.tickerSubscriptions,
+      this.tradeSubscriptions,
+      this.orderbookSubscriptions,
+    ]) {
+      for (const [symbolId, subscription] of map) {
+        if (subscription.id !== subscriptionId) continue;
+        subscription.unsubscribe();
+        map.delete(symbolId);
+        this.send({ type: 'market.unsubscribed', requestId, payload: { subscriptionId } });
+        return;
+      }
     }
   }
 

@@ -20,16 +20,16 @@ export function TerminalShell() {
     [setLayout],
   );
 
-  const onAiChange = useCallback(
-    (ai: number) => {
-      setLayout({ ai });
+  const onMarketChange = useCallback(
+    (market: number) => {
+      setLayout({ market });
     },
     [setLayout],
   );
 
-  const onBottomChange = useCallback(
-    (bottom: number) => {
-      setLayout({ bottom });
+  const onAiChange = useCallback(
+    (ai: number) => {
+      setLayout({ ai });
     },
     [setLayout],
   );
@@ -49,18 +49,22 @@ export function TerminalShell() {
         />
 
         <div className={styles.center}>
-          <div className={styles.chart}>
-            <ChartPanel />
-          </div>
-          <ResizeHandle
-            axis="y"
-            value={layout.bottom}
-            invert
-            onChange={onBottomChange}
-            label="Resize bottom panels"
-          />
-          <div className={styles.bottom} style={{ height: layout.bottom }}>
+          <ChartPanel />
+        </div>
+
+        <ResizeHandle
+          axis="x"
+          value={layout.market}
+          invert
+          onChange={onMarketChange}
+          label="Resize market panels"
+        />
+
+        <div className={styles.market} style={{ width: layout.market }}>
+          <div className={styles.marketBook}>
             <OrderBookPanel />
+          </div>
+          <div className={styles.marketTrades}>
             <TradesPanel />
           </div>
         </div>

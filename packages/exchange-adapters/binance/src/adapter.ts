@@ -20,9 +20,11 @@ import {
   mapRestKline,
   mapTicker,
   mapWsKline,
+  mapWsPartialDepth,
   mapWsTicker,
   mapWsTrade,
   streamNameForKline,
+  streamNameForOrderBook,
   streamNameForTicker,
   streamNameForTrade,
   type RawDepth,
@@ -30,6 +32,7 @@ import {
   type RawKline,
   type RawTicker24hr,
   type RawWsKlineEvent,
+  type RawWsPartialDepth,
   type RawWsTickerEvent,
   type RawWsTradeEvent,
 } from './mappers';
@@ -252,6 +255,17 @@ export class BinanceAdapter implements ExchangeAdapter {
         });
       },
     );
+    return { unsubscribe };
+  }
+
+  subscribeOrderBook(symbol: MarketSymbol, sink: MarketSink): Subscription {
+    assertBinanceSymbol(symbol);
+    const stream = streamNameForOrderBook(symbol.rawSymbol, 20);
+    const unsubscribe = this.ws.subscribe(symbol.marketType, stream, (payload) => {
+      const snapshot = mapWsPartialDepth(payload as RawWsPartialDepth, symbol);
+      if (!snapshot) return;
+      sink({ type: 'orderbook_snapshot', payload: snapshot });
+    });
     return { unsubscribe };
   }
 

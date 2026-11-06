@@ -427,27 +427,40 @@ export class MarketDataEngine {
       return this.pollTicker(sub.symbol);
     }
 
-    if (adapter.subscribeOrderBook) {
-      return adapter.subscribeOrderBook(sub.symbol, (event) => {
-        if (event.type === 'orderbook_snapshot') {
-          this.ingestBook(event.payload);
-          return;
-        }
-        if (event.type === 'orderbook_delta') {
-          this.publish(event, orderbookSubscriptionKey(sub.symbol.symbolId));
-          return;
-        }
-        this.publish(event);
-      });
+    if (sub.channel === 'orderbook') {
+      if (adapter.subscribeOrderBook) {
+        return adapter.subscribeOrderBook(sub.symbol, (event) => {
+          if (event.type === 'orderbook_snapshot') {
+            this.ingestBook(event.payload);
+            return;
+          }
+          if (event.type === 'orderbook_delta') {
+            this.publish(event, orderbookSubscriptionKey(sub.symbol.symbolId));
+            return;
+          }
+          this.publish(event);
+        });
+      }
+      return this.pollOrderBook(sub.symbol);
     }
 
-    this.track(
-      this.refreshOrderBook(sub.symbol).then(
-        () => undefined,
-        () => undefined,
-      ),
-    );
-    return { unsubscribe() {} };
+    throw new Error(`Unsupported channel: ${sub.channel}`);
+  }
+
+  private pollOrderBook(symbol: MarketSymbol, depth = 20): Subscription {
+    let stopped = false;
+    const pull = (): void => {
+      if (stopped) return;
+      void this.refreshOrderBook(symbol, depth).catch(() => undefined);
+    };
+    pull();
+    const timer = setInterval(pull, 1_000);
+    return {
+      unsubscribe() {
+        stopped = true;
+        clearInterval(timer);
+      },
+    };
   }
 
   private openKlineUpstream(symbol: MarketSymbol, interval: KlineInterval): Subscription {

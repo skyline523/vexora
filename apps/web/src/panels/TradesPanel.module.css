@@ -6,10 +6,12 @@
   background: var(--vx-bg-panel);
 }
 
-.table {
+.body {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   font-family: var(--vx-mono);
   font-size: 12px;
 }
@@ -19,18 +21,29 @@
   display: grid;
   grid-template-columns: 1.2fr 1fr 0.9fr;
   gap: 8px;
-  padding: 5px 10px;
+  padding: 0 10px;
+  align-items: center;
 }
 
 .head {
-  position: sticky;
-  top: 0;
+  flex: 0 0 auto;
+  height: 24px;
   background: var(--vx-bg-elevated);
   color: var(--vx-text-muted);
   font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   border-bottom: 1px solid var(--vx-border);
+}
+
+.list {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.row {
+  height: 26px;
 }
 
 .buy {
@@ -45,4 +58,10 @@
 .time {
   text-align: right;
   color: var(--vx-text-secondary);
+}
+
+.empty {
+  padding: 16px 10px;
+  color: var(--vx-text-muted);
+  font-size: 12px;
 }

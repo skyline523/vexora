@@ -1,0 +1,14 @@
+.root {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+  color: var(--vx-text);
+}
+
+.up {
+  color: var(--vx-up) !important;
+}
+
+.down {
+  color: var(--vx-down) !important;
+}

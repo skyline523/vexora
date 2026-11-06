@@ -79,6 +79,20 @@ export interface RawDepth {
   T?: number;
 }
 
+/** Spot partial book depth (`@depth20@100ms`) or futures shape with `b`/`a`. */
+export interface RawWsPartialDepth {
+  lastUpdateId?: number;
+  bids?: [string, string][];
+  asks?: [string, string][];
+  b?: [string, string][];
+  a?: [string, string][];
+  E?: number;
+  T?: number;
+  u?: number;
+  e?: string;
+  s?: string;
+}
+
 export interface RawWsKlineEvent {
   e: 'kline';
   E: number;
@@ -320,10 +334,39 @@ export function mapOrderBook(
   };
 }
 
+export function mapWsPartialDepth(
+  event: RawWsPartialDepth,
+  symbol: MarketSymbol,
+  receivedAt = Date.now(),
+): OrderBookSnapshot | null {
+  const bids = event.bids ?? event.b;
+  const asks = event.asks ?? event.a;
+  if (!bids || !asks) return null;
+  const lastUpdateId = event.lastUpdateId ?? event.u;
+  if (lastUpdateId == null) return null;
+  return mapOrderBook(
+    {
+      lastUpdateId,
+      bids,
+      asks,
+      E: event.E,
+      T: event.T,
+    },
+    symbol,
+    receivedAt,
+  );
+}
+
 export function streamNameForKline(rawSymbol: string, interval: KlineInterval): string {
   return `${rawSymbol.toLowerCase()}@kline_${interval}`;
 }
 
 export function streamNameForTrade(rawSymbol: string): string {
   return `${rawSymbol.toLowerCase()}@trade`;
+}
+
+/** Partial top-of-book depth (5 / 10 / 20), 100ms cadence. */
+export function streamNameForOrderBook(rawSymbol: string, depth = 20): string {
+  const levels = depth <= 5 ? 5 : depth <= 10 ? 10 : 20;
+  return `${rawSymbol.toLowerCase()}@depth${levels}@100ms`;
 }

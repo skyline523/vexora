@@ -1,4 +1,5 @@
 import { Segmented, Select } from 'antd';
+import { FlashQuote } from '../components/FlashQuote';
 import {
   formatPercent,
   formatPrice,
@@ -28,7 +29,6 @@ export function TopNav() {
   const quote = useQuoteStore((state) => (active ? state.quotes[active.symbolId] : undefined));
   const lastPrice = quote?.lastPrice ?? active?.lastPrice;
   const changePercent = quote?.changePercent ?? active?.changePercent ?? 0;
-  const changeClass = changePercent >= 0 ? styles.up : styles.down;
 
   return (
     <header className={styles.nav}>
@@ -73,9 +73,13 @@ export function TopNav() {
       </div>
 
       {active ? (
-        <div className={styles.priceBlock}>
-          <span className={styles.price}>{lastPrice == null ? '—' : formatPrice(lastPrice)}</span>
-          <span className={changeClass}>{formatPercent(changePercent)}</span>
+        <div className={styles.priceBlock} key={active.symbolId}>
+          <FlashQuote
+            value={lastPrice ?? null}
+            valueText={lastPrice == null ? '—' : formatPrice(lastPrice)}
+            percentText={formatPercent(changePercent)}
+            valueClassName={styles.price}
+          />
         </div>
       ) : null}
     </header>

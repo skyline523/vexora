@@ -27,17 +27,24 @@
   min-height: 0;
 }
 
-.chart {
-  flex: 1;
-  min-height: 0;
+.market {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  min-width: 0;
+  height: 100%;
+  border-left: 1px solid var(--vx-border);
 }
 
-.bottom {
-  display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  flex: 0 0 auto;
+.marketBook {
+  flex: 0 0 55%;
   min-height: 0;
-  border-top: 0;
+  border-bottom: 1px solid var(--vx-border);
+}
+
+.marketTrades {
+  flex: 1 1 45%;
+  min-height: 0;
 }
 
 .ai {
@@ -63,13 +70,21 @@
     border-bottom: 1px solid var(--vx-border);
   }
 
-  .bottom {
-    grid-template-columns: 1fr 1fr;
+  .market {
+    width: 100% !important;
+    height: 280px;
+    border-left: 0;
+    border-top: 1px solid var(--vx-border);
+    flex-direction: row;
   }
-}
 
-@media (max-width: 640px) {
-  .bottom {
-    grid-template-columns: 1fr;
+  .marketBook,
+  .marketTrades {
+    flex: 1 1 50%;
+    border-bottom: 0;
+  }
+
+  .marketBook {
+    border-right: 1px solid var(--vx-border);
   }
 }
