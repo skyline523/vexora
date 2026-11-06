@@ -257,33 +257,35 @@
 
 ## Task 06 — SQLite 数据持久化
 
-<badge> P0 </badge>
+<badge> P0 </badge> <badge> done </badge>
 
 预计：1 天
 
+状态：✅ 已完成
+
 ### 开发内容
 
-- [ ] 安装 SQLite。
-- [ ] 集成 Drizzle ORM。
-- [ ] 配置数据库文件目录。
-- [ ] 创建数据库初始化逻辑。
-- [ ] 创建数据库 Migration。
-- [ ] 创建 ExchangeConfig 表。
-- [ ] 创建 ModelConfig 表。
-- [ ] 创建 Watchlist 表。
-- [ ] 实现 Repository 基础封装。
-- [ ] 实现自选列表增删改查。
-- [ ] 实现交易所配置持久化。
-- [ ] 实现模型配置持久化。
+- [x] 安装 SQLite。
+- [x] 集成 Drizzle ORM。
+- [x] 配置数据库文件目录。
+- [x] 创建数据库初始化逻辑。
+- [x] 创建数据库 Migration。
+- [x] 创建 ExchangeConfig 表。
+- [x] 创建 ModelConfig 表。
+- [x] 创建 Watchlist 表。
+- [x] 实现 Repository 基础封装。
+- [x] 实现自选列表增删改查。
+- [x] 实现交易所配置持久化。
+- [x] 实现模型配置持久化。
 
 ### 验收标准
 
-- [ ] 数据库可以正常初始化。
-- [ ] Migration 可以正常执行。
-- [ ] 自选列表可以持久化。
-- [ ] 交易所配置可以持久化。
-- [ ] 应用重启后配置不会丢失。
-- [ ] 数据库访问逻辑与业务逻辑分离。
+- [x] 数据库可以正常初始化。
+- [x] Migration 可以正常执行。
+- [x] 自选列表可以持久化。
+- [x] 交易所配置可以持久化。
+- [x] 应用重启后配置不会丢失。
+- [x] 数据库访问逻辑与业务逻辑分离。
 
 说明：本阶段不将所有实时行情写入 SQLite。
 
@@ -303,7 +305,7 @@
 - [ ] 检测并补齐行情缺口。
 - [ ] 现货和永续分别管理订阅。
 - [ ] 连续运行两小时无明显内存增长或数据异常。
-- [ ] SQLite 自选和配置持久化。
+- [x] SQLite 自选和配置持久化。
 
 **Phase 1 完成标准：能够稳定运行一个真实的 Binance 行情终端。**
 
@@ -683,7 +685,7 @@ flowchart TD
 - [x] ✅ Task 03 — Binance Adapter
 - [x] ✅ Task 04 — Market Data Engine
 - [x] ✅ Task 05 — Chart Engine
-- [ ] Task 06 — SQLite
+- [x] ✅ Task 06 — SQLite
 
 ### Phase 2 — AI 模型与 Agent
 

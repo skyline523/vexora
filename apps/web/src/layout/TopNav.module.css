@@ -30,6 +30,12 @@
   text-transform: uppercase;
 }
 
+.symbolOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .controls {
   display: flex;
   align-items: center;

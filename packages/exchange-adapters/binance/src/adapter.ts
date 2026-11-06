@@ -14,6 +14,7 @@ import {
   type Ticker,
 } from '@vexora/shared';
 import { BINANCE_EXCHANGE_ID } from './constants';
+import { BINANCE_MARGIN_PAIRS_URL, parseMarginLeverage } from './margin-leverage';
 import {
   mapInstrument,
   mapOrderBook,
@@ -36,7 +37,7 @@ import {
   type RawWsTickerEvent,
   type RawWsTradeEvent,
 } from './mappers';
-import { resolveProxyUrl, resolveProxyUrlAsync } from './proxy';
+import { detectLocalFuturesProxy, resolveProxyUrl, resolveProxyUrlAsync } from './proxy';
 import { BinanceRestClient, type RestClientOptions } from './rest-client';
 import {
   BinanceWsManager,
@@ -54,6 +55,11 @@ export interface BinanceAdapterOptions {
    * Set only when this process must egress through an HTTP proxy.
    */
   proxyUrl?: string;
+  /**
+   * HTTP proxy for USDT-M only. Spot stays direct unless `proxyUrl` is set.
+   * Defaults to BINANCE_FUTURES_PROXY, then a local Clash mixed-port on 7890.
+   */
+  futuresProxyUrl?: string;
 }
 
 /** Builds an adapter. Proxy is used only when explicitly configured. */
@@ -65,7 +71,13 @@ export async function createBinanceAdapter(
     options.rest?.proxyUrl ??
     options.ws?.proxyUrl ??
     (await resolveProxyUrlAsync());
-  return new BinanceAdapter({ ...options, proxyUrl });
+  const futuresFromEnv = process.env.BINANCE_FUTURES_PROXY?.trim();
+  let futuresProxyUrl = options.futuresProxyUrl ?? (futuresFromEnv || undefined);
+  if (!futuresProxyUrl && !proxyUrl) {
+    futuresProxyUrl = await detectLocalFuturesProxy();
+  }
+  futuresProxyUrl ??= proxyUrl;
+  return new BinanceAdapter({ ...options, proxyUrl, futuresProxyUrl });
 }
 
 function assertBinanceSymbol(symbol: MarketSymbol): void {
@@ -87,6 +99,7 @@ export class BinanceAdapter implements ExchangeAdapter {
   private readonly rest: BinanceRestClient;
   private readonly ws: BinanceWsManager;
   private readonly logger: Logger;
+  private marginLeverageCache?: { at: number; leverage: Record<string, number> };
 
   constructor(options: BinanceAdapterOptions = {}) {
     this.logger =
@@ -96,19 +109,35 @@ export class BinanceAdapter implements ExchangeAdapter {
       options.rest?.proxyUrl ??
       options.ws?.proxyUrl ??
       resolveProxyUrl();
-    if (proxyUrl) {
+    const futuresProxyUrl = options.futuresProxyUrl ?? proxyUrl;
+    const proxies = {
+      spot: proxyUrl,
+      usdt_perpetual: futuresProxyUrl,
+    };
+    if (proxyUrl && proxyUrl === futuresProxyUrl) {
       this.logger.info('proxy.enabled', { proxyUrl });
-    } else {
+    } else if (!proxyUrl && !futuresProxyUrl) {
       this.logger.info('network.direct');
+    } else {
+      this.logger.info('network.split', {
+        spot: proxyUrl ?? 'direct',
+        usdt_perpetual: futuresProxyUrl ?? 'direct',
+      });
     }
     this.rest = new BinanceRestClient({
       ...options.rest,
-      proxyUrl: options.rest?.proxyUrl ?? proxyUrl,
+      proxies: {
+        spot: options.rest?.proxies?.spot ?? proxies.spot,
+        usdt_perpetual: options.rest?.proxies?.usdt_perpetual ?? proxies.usdt_perpetual,
+      },
       logger: options.rest?.logger ?? this.logger.child({ layer: 'rest' }),
     });
     this.ws = new BinanceWsManager({
       ...options.ws,
-      proxyUrl: options.ws?.proxyUrl ?? proxyUrl,
+      proxies: {
+        spot: options.ws?.proxies?.spot ?? proxies.spot,
+        usdt_perpetual: options.ws?.proxies?.usdt_perpetual ?? proxies.usdt_perpetual,
+      },
       logger: options.ws?.logger ?? this.logger.child({ layer: 'ws' }),
       sink: options.eventSink ?? options.ws?.sink,
     });
@@ -116,6 +145,28 @@ export class BinanceAdapter implements ExchangeAdapter {
 
   setEventSink(sink: MarketSink | undefined): void {
     this.ws.setSink(sink);
+  }
+
+  /** Spot cross-margin multiples (10x, 5x). Empty when the public list is unreachable. */
+  async getSpotMarginLeverage(): Promise<Record<string, number>> {
+    const ttlMs = 10 * 60 * 1000;
+    const cached = this.marginLeverageCache;
+    if (cached && Date.now() - cached.at < ttlMs) return cached.leverage;
+
+    try {
+      const payload = await this.rest.getAbsoluteJson<unknown>(
+        'usdt_perpetual',
+        BINANCE_MARGIN_PAIRS_URL,
+      );
+      const leverage = parseMarginLeverage(payload);
+      this.marginLeverageCache = { at: Date.now(), leverage };
+      return leverage;
+    } catch (error) {
+      this.logger.warn('margin.leverage_unavailable', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return cached?.leverage ?? {};
+    }
   }
 
   async getExchangeInfo(marketType: MarketType): Promise<ExchangeInfo> {
@@ -133,6 +184,14 @@ export class BinanceAdapter implements ExchangeAdapter {
     const instruments = raw.symbols
       .map((item) => mapInstrument(item, marketType))
       .filter((item): item is NonNullable<typeof item> => item != null);
+
+    if (marketType === 'spot') {
+      const leverage = await this.getSpotMarginLeverage();
+      for (const instrument of instruments) {
+        const multiple = leverage[instrument.symbol.rawSymbol];
+        if (multiple) instrument.marginLeverage = multiple;
+      }
+    }
 
     return {
       exchange: BINANCE_EXCHANGE_ID,

@@ -1,12 +1,23 @@
 import { Select } from 'antd';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PanelHeader } from '../components/PanelHeader';
-import { formatQty, getInstrument, MARKET_INSTRUMENTS } from '../data/mockMarket';
+import { SymbolWithPerp } from '../components/SymbolWithPerp';
+import {
+  formatQtyWithScale,
+  getInstrument,
+  listedSymbol,
+  listedTag,
+  MARKET_INSTRUMENTS,
+  qtyScaleForMax,
+} from '../data/mockMarket';
+import { useMarginLeverage } from '../market/marginLeverage';
 import {
   aggregateBookLevels,
   BOOK_SIDE_LEVELS,
-  BOOK_TICK_OPTIONS,
+  bookTickOptionsForPrice,
+  defaultBookTick,
   formatBookPrice,
+  formatTickLabel,
   useLiveBookStore,
   useLiveMarketFeed,
   withCumulativeTotals,
@@ -18,10 +29,26 @@ import styles from './OrderBookPanel.module.css';
 export function OrderBookPanel() {
   const symbolId = useTerminalStore((state) => state.symbolId);
   const active = getInstrument(symbolId) ?? MARKET_INSTRUMENTS[0]!;
+  const marginLeverage = useMarginLeverage();
+  const symbolLabel = listedSymbol(active);
+  const symbolTag = listedTag(active, marginLeverage);
   useLiveMarketFeed(symbolId);
 
-  const [tick, setTick] = useState<BookTick>(0.01);
   const book = useLiveBookStore((state) => (state.symbolId === symbolId ? state.book : null));
+  const midPrice = book?.asks[0]?.price ?? book?.bids[0]?.price ?? null;
+
+  const tickOptions = useMemo(() => bookTickOptionsForPrice(midPrice), [midPrice]);
+  const [tick, setTick] = useState<BookTick>(() => defaultBookTick(midPrice));
+
+  useEffect(() => {
+    setTick(defaultBookTick(midPrice));
+  }, [symbolId]);
+
+  useEffect(() => {
+    if (!tickOptions.includes(tick)) {
+      setTick(tickOptions[0]!);
+    }
+  }, [tick, tickOptions]);
 
   const asks = useMemo(
     () =>
@@ -46,6 +73,14 @@ export function OrderBookPanel() {
     ...asks.map((level) => level.qty),
     ...bids.map((level) => level.qty),
   );
+  // Scale from the largest visible size/total so BTC stays plain and meme coins compact.
+  const qtyScale = qtyScaleForMax(
+    Math.max(
+      maxQty,
+      ...asks.map((level) => level.total),
+      ...bids.map((level) => level.total),
+    ),
+  );
 
   return (
     <section className={styles.root} aria-label="Order book">
@@ -57,9 +92,9 @@ export function OrderBookPanel() {
             value={tick}
             className={styles.tickSelect}
             popupMatchSelectWidth={false}
-            options={BOOK_TICK_OPTIONS.map((value) => ({
+            options={tickOptions.map((value) => ({
               value,
-              label: String(value),
+              label: formatTickLabel(value),
             }))}
             onChange={(value) => setTick(value as BookTick)}
             aria-label="Order book tick size"
@@ -93,15 +128,15 @@ export function OrderBookPanel() {
                       style={{ width: `${(level.qty / maxQty) * 100}%` }}
                     />
                     <span className={styles.askPrice}>{formatBookPrice(level.price, tick)}</span>
-                    <span className={styles.qty}>{formatQty(level.qty)}</span>
-                    <span className={styles.total}>{formatQty(level.total)}</span>
+                    <span className={styles.qty}>{formatQtyWithScale(level.qty, qtyScale)}</span>
+                    <span className={styles.total}>{formatQtyWithScale(level.total, qtyScale)}</span>
                   </div>
                 );
               })}
             </div>
 
             <div className={styles.spread}>
-              <span>{active.symbol}</span>
+              <SymbolWithPerp name={symbolLabel} perpetual={symbolTag === '永续'} />
               <span>{spread == null ? '—' : formatBookPrice(spread, tick)}</span>
             </div>
 
@@ -118,8 +153,8 @@ export function OrderBookPanel() {
                       style={{ width: `${(level.qty / maxQty) * 100}%` }}
                     />
                     <span className={styles.bidPrice}>{formatBookPrice(level.price, tick)}</span>
-                    <span className={styles.qty}>{formatQty(level.qty)}</span>
-                    <span className={styles.total}>{formatQty(level.total)}</span>
+                    <span className={styles.qty}>{formatQtyWithScale(level.qty, qtyScale)}</span>
+                    <span className={styles.total}>{formatQtyWithScale(level.total, qtyScale)}</span>
                   </div>
                 );
               })}

@@ -24,3 +24,9 @@ export {
 
 export { KLINE_INTERVAL_MS, intervalToMs } from './interval';
 export { buildSymbolId, createMarketSymbol, parseSymbolId } from './symbols';
+export {
+  formatMarketPrice,
+  inferPriceDecimals,
+  inferPriceMinMove,
+  type PriceFormatOptions,
+} from './format';

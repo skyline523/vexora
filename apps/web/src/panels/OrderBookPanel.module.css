@@ -7,7 +7,7 @@
 }
 
 .tickSelect {
-  min-width: 72px;
+  min-width: 108px;
 }
 
 .body {
@@ -91,6 +91,7 @@
 
 .spread {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   flex: 0 0 auto;
   padding: 6px 10px;
@@ -104,6 +105,8 @@
 .total {
   text-align: right;
   color: var(--vx-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .empty {

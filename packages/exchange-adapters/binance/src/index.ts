@@ -26,6 +26,7 @@ export {
 export {
   createProxyAwareFetch,
   createWsProxyAgent,
+  detectLocalFuturesProxy,
   resolveProxyUrl,
   resolveProxyUrlAsync,
 } from './proxy';

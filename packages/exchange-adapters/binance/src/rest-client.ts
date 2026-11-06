@@ -15,8 +15,10 @@ export interface RestClientOptions {
   bases?: Partial<Record<MarketType, string>>;
   timeoutMs?: number;
   limiter?: WeightRateLimiter;
-  /** Explicit HTTP(S) proxy, e.g. http://127.0.0.1:10809 */
+  /** Explicit HTTP(S) proxy, e.g. http://127.0.0.1:10809. Used when a market has no override. */
   proxyUrl?: string;
+  /** Per-market proxy. Spot can stay direct while USDT-M uses a local HTTP proxy. */
+  proxies?: Partial<Record<MarketType, string | undefined>>;
   fetchImpl?: ProxyAwareFetch;
   logger?: Logger;
 }
@@ -25,9 +27,10 @@ export class BinanceRestClient {
   private readonly bases: Record<MarketType, string>;
   private readonly timeoutMs: number;
   private readonly limiter: WeightRateLimiter;
-  private readonly fetchImpl: ProxyAwareFetch;
+  private readonly fetchByMarket: Record<MarketType, ProxyAwareFetch>;
   private readonly logger?: Logger;
   readonly proxyUrl?: string;
+  readonly proxies: Partial<Record<MarketType, string | undefined>>;
 
   constructor(options: RestClientOptions = {}) {
     this.bases = {
@@ -35,17 +38,47 @@ export class BinanceRestClient {
       usdt_perpetual:
         options.bases?.usdt_perpetual ?? BINANCE_REST_BASE.usdt_perpetual,
     };
-    this.proxyUrl = options.proxyUrl;
+    this.proxies = {
+      spot: options.proxies?.spot ?? options.proxyUrl,
+      usdt_perpetual: options.proxies?.usdt_perpetual ?? options.proxyUrl,
+    };
+    this.proxyUrl = options.proxyUrl ?? this.proxies.usdt_perpetual ?? this.proxies.spot;
+    const usesProxy = Boolean(this.proxies.spot || this.proxies.usdt_perpetual || resolveProxyUrl());
     // Proxy CONNECT tunnels (Clash etc.) are slower; give them more headroom.
     this.timeoutMs =
       options.timeoutMs ??
-      (options.proxyUrl || resolveProxyUrl()
-        ? 60_000
-        : DEFAULT_REST_TIMEOUT_MS);
+      (usesProxy ? 60_000 : DEFAULT_REST_TIMEOUT_MS);
     this.limiter = options.limiter ?? new WeightRateLimiter();
-    this.fetchImpl =
-      options.fetchImpl ?? createProxyAwareFetch(options.proxyUrl);
+    this.fetchByMarket = {
+      spot: options.fetchImpl ?? createProxyAwareFetch(this.proxies.spot),
+      usdt_perpetual:
+        options.fetchImpl ?? createProxyAwareFetch(this.proxies.usdt_perpetual),
+    };
     this.logger = options.logger;
+  }
+
+  async getAbsoluteJson<T>(marketType: MarketType, absoluteUrl: string): Promise<T> {
+    await this.limiter.schedule(1);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const response = await this.fetchByMarket[marketType](absoluteUrl, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: { Accept: 'application/json' },
+      });
+      if (!response.ok) {
+        throw new BinanceApiError({
+          status: response.status,
+          code: response.status,
+          message: `Binance REST ${absoluteUrl} failed: ${response.statusText}`,
+          retryable: isRetryableHttpStatus(response.status),
+        });
+      }
+      return (await response.json()) as T;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async getJson<T>(
@@ -77,7 +110,7 @@ export class BinanceRestClient {
         proxy: this.proxyUrl ? 'on' : 'off',
       });
 
-      const response = await this.fetchImpl(url.toString(), {
+      const response = await this.fetchByMarket[marketType](url.toString(), {
         method: 'GET',
         signal: controller.signal,
         headers: { Accept: 'application/json' },
@@ -107,8 +140,11 @@ export class BinanceRestClient {
         }
         if (response.status === 451) {
           message =
-            `${message || 'Unavailable For Legal Reasons'} ` +
-            `(host may be geo-blocked; spot defaults to data-api.binance.vision)`;
+            marketType === 'usdt_perpetual'
+              ? `${message || 'Unavailable For Legal Reasons'} ` +
+                `(合约行情被当前出口 IP 限制，请把代理节点换到日本或美国后再试)`
+              : `${message || 'Unavailable For Legal Reasons'} ` +
+                `(host may be geo-blocked; spot defaults to data-api.binance.vision)`;
         }
         throw new BinanceApiError({
           status: response.status,

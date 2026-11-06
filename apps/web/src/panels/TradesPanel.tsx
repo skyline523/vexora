@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { PanelHeader } from '../components/PanelHeader';
-import { formatPrice, formatQty, getInstrument, MARKET_INSTRUMENTS } from '../data/mockMarket';
+import { SymbolWithPerp } from '../components/SymbolWithPerp';
+import { formatPrice, formatQty, getInstrument, listedSymbol, listedTag, MARKET_INSTRUMENTS } from '../data/mockMarket';
+import { useMarginLeverage } from '../market/marginLeverage';
 import { formatTradeTime, useLiveBookStore, useLiveMarketFeed } from '../market/liveBook';
 import { useTerminalStore } from '../store/terminalStore';
 import styles from './TradesPanel.module.css';
@@ -11,6 +13,8 @@ const DEFAULT_VISIBLE = 14;
 export function TradesPanel() {
   const symbolId = useTerminalStore((state) => state.symbolId);
   const active = getInstrument(symbolId) ?? MARKET_INSTRUMENTS[0]!;
+  const marginLeverage = useMarginLeverage();
+  const symbolTag = listedTag(active, marginLeverage);
   useLiveMarketFeed(symbolId);
 
   const listRef = useRef<HTMLDivElement>(null);
@@ -35,7 +39,15 @@ export function TradesPanel() {
 
   return (
     <section className={styles.root} aria-label="Recent trades">
-      <PanelHeader title="Trades" meta={active.symbol} />
+      <PanelHeader
+        title="Trades"
+        meta={
+          <SymbolWithPerp
+            name={listedSymbol(active)}
+            perpetual={symbolTag === '永续'}
+          />
+        }
+      />
       <div className={styles.body}>
         <div className={styles.head}>
           <span>Price</span>

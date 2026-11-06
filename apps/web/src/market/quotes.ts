@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { create } from 'zustand';
 import type { Ticker } from '@vexora/shared';
-import { marketWebSocketUrl } from '../api/market';
+import { fetchTickers, marketWebSocketUrl } from '../api/market';
 
 export interface LiveQuote {
   lastPrice: number;
@@ -46,9 +46,38 @@ function isTicker(value: unknown): value is Ticker {
   return typeof ticker.symbolId === 'string' && typeof ticker.lastPrice === 'number';
 }
 
-/** Keep one socket for the visible watchlist and publish last price plus 24h change. */
+/** REST snapshot so search/watchlist rows show a price before the first WS tick. */
+export function useHydrateQuotes(symbolIds: readonly string[]): void {
+  const key = [...symbolIds].sort().join('|');
+
+  useEffect(() => {
+    const ids = key ? key.split('|') : [];
+    if (ids.length === 0) return undefined;
+
+    let cancelled = false;
+    void fetchTickers(ids)
+      .then((tickers) => {
+        if (cancelled) return;
+        const apply = useQuoteStore.getState().applyTicker;
+        for (const ticker of tickers) {
+          apply(ticker);
+        }
+      })
+      .catch(() => {
+        // WS subscription below still provides live updates when available.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [key]);
+}
+
+/** Keep one socket for the visible symbols and publish last price plus 24h change. */
 export function useWatchlistQuotes(symbolIds: readonly string[]): void {
   const key = [...symbolIds].sort().join('|');
+
+  useHydrateQuotes(symbolIds);
 
   useEffect(() => {
     const ids = key ? key.split('|') : [];

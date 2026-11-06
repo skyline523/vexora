@@ -8,6 +8,8 @@ export interface WatchlistItem {
   marketType: MarketType;
   lastPrice: number;
   changePercent: number;
+  /** Spot cross-margin multiple from Binance, when the pair supports margin. */
+  marginLeverage?: number;
 }
 
 export interface OrderBookLevel {

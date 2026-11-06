@@ -135,6 +135,7 @@ export interface MarketError {
   code: string;
   message: string;
   exchange?: ExchangeId;
+  marketType?: MarketType;
   symbolId?: string;
   retryable: boolean;
   ts: number;
@@ -156,6 +157,8 @@ export interface ExchangeInstrument {
   quantityPrecision: number;
   status: 'trading' | 'break' | 'unknown';
   contractType?: 'usdt_perpetual';
+  /** Spot cross-margin max leverage shown by Binance, e.g. 10 for "10x". */
+  marginLeverage?: number;
 }
 
 export interface ExchangeInfo {

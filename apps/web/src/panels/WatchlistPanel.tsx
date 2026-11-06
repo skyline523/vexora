@@ -2,18 +2,33 @@ import { Input } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FlashQuote } from '../components/FlashQuote';
 import { PanelHeader } from '../components/PanelHeader';
-import {
-  formatPercent,
-  formatPrice,
-  resolveWatchlistItems,
-  searchInstruments,
-} from '../data/mockMarket';
-import { useQuoteStore, useWatchlistQuotes } from '../market/quotes';
+import { SymbolWithPerp } from '../components/SymbolWithPerp';
+import { formatPercent, formatPrice, listedSymbol, listedTag, resolveWatchlistItems } from '../data/mockMarket';
+import { useInstrumentSearch } from '../market/instrumentSearch';
+import { useMarginLeverage } from '../market/marginLeverage';
+import { useHydrateQuotes, useQuoteStore, useWatchlistQuotes } from '../market/quotes';
 import { useTerminalStore } from '../store/terminalStore';
+import type { MarketType } from '../types/terminal';
 import styles from './WatchlistPanel.module.css';
 
+function MarketTag({
+  label,
+  marketType,
+  extra,
+}: {
+  label: string;
+  marketType: MarketType;
+  extra?: string;
+}) {
+  return (
+    <span className={`${styles.tag} ${marketType === 'spot' ? styles.tagSpot : styles.tagPerp}`}>
+      {label}
+      {extra ? ` · ${extra}` : ''}
+    </span>
+  );
+}
+
 export function WatchlistPanel() {
-  const marketType = useTerminalStore((state) => state.marketType);
   const symbolId = useTerminalStore((state) => state.symbolId);
   const watchlistIds = useTerminalStore((state) => state.watchlistIds);
   const setSymbolId = useTerminalStore((state) => state.setSymbolId);
@@ -24,17 +39,19 @@ export function WatchlistPanel() {
   const [open, setOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const items = useMemo(
-    () => resolveWatchlistItems(watchlistIds).filter((item) => item.marketType === marketType),
-    [watchlistIds, marketType],
-  );
+  // Show mixed Spot + Perp favorites with tags (Binance-style).
+  const items = useMemo(() => resolveWatchlistItems(watchlistIds), [watchlistIds]);
   const quotes = useQuoteStore((state) => state.quotes);
-  useWatchlistQuotes(items.map((item) => item.symbolId));
+  const marginLeverage = useMarginLeverage();
 
-  const results = useMemo(
-    () => searchInstruments(query, { marketType, limit: 8 }),
-    [query, marketType],
-  );
+  const { results, loading, error } = useInstrumentSearch({
+    query,
+    enabled: open,
+    limit: 12,
+  });
+
+  useWatchlistQuotes(items.map((item) => item.symbolId));
+  useHydrateQuotes(open ? results.map((item) => item.symbolId) : []);
 
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
@@ -56,7 +73,7 @@ export function WatchlistPanel() {
             allowClear
             size="small"
             value={query}
-            placeholder="Search symbol…"
+            placeholder="搜索现货 / 合约"
             aria-label="Search symbols"
             aria-expanded={open}
             aria-controls="watchlist-search-results"
@@ -79,8 +96,15 @@ export function WatchlistPanel() {
               role="listbox"
               aria-label="Search results"
             >
-              {results.length === 0 ? (
-                <div className={styles.empty}>No symbols match “{query.trim()}”</div>
+              {error && results.length > 0 ? <div className={styles.hint}>{error}</div> : null}
+              {loading && results.length === 0 ? (
+                <div className={styles.empty}>Searching markets…</div>
+              ) : results.length === 0 ? (
+                <div className={styles.empty}>
+                  {error
+                    ? `Search unavailable. ${error}`
+                    : `No symbols match “${query.trim() || '…'}”`}
+                </div>
               ) : (
                 results.map((item) => {
                   const inList = watchlistIds.includes(item.symbolId);
@@ -93,10 +117,12 @@ export function WatchlistPanel() {
                       type="button"
                       role="option"
                       aria-selected={inList}
-                      aria-disabled={inList}
                       className={`${styles.result} ${inList ? styles.resultInList : ''}`}
                       onClick={() => {
                         if (inList) {
+                          setSymbolId(item.symbolId);
+                          setQuery('');
+                          setOpen(false);
                           return;
                         }
                         addToWatchlist(item.symbolId);
@@ -104,19 +130,29 @@ export function WatchlistPanel() {
                         setOpen(false);
                       }}
                     >
-                      <span className={styles.symbol}>{item.symbol}</span>
-                      <FlashQuote
-                        value={lastPrice}
-                        valueText={formatPrice(lastPrice)}
-                        percentText={formatPercent(changePercent)}
-                        valueClassName={styles.price}
-                        percentClassName={styles.change}
-                        between={
-                          <span className={styles.market}>
-                            {item.marketType === 'spot' ? 'Spot' : 'Perp'}
-                          </span>
-                        }
-                      />
+                      <span className={styles.symbolCell}>
+                        <SymbolWithPerp
+                          name={listedSymbol(item)}
+                          perpetual={item.marketType !== 'spot'}
+                          nameClassName={styles.symbol}
+                        />
+                        {item.marketType === 'spot' && listedTag(item, marginLeverage) ? (
+                          <MarketTag
+                            marketType={item.marketType}
+                            label={listedTag(item, marginLeverage)!}
+                            extra={inList ? '已添加' : undefined}
+                          />
+                        ) : null}
+                      </span>
+                      <span className={styles.quoteCell}>
+                        <FlashQuote
+                          value={lastPrice}
+                          valueText={lastPrice > 0 ? formatPrice(lastPrice) : '—'}
+                          percentText={lastPrice > 0 ? formatPercent(changePercent) : ''}
+                          valueClassName={styles.price}
+                          percentClassName={styles.change}
+                        />
+                      </span>
                     </button>
                   );
                 })
@@ -128,7 +164,7 @@ export function WatchlistPanel() {
 
       <ul className={styles.list}>
         {items.length === 0 ? (
-          <li className={styles.emptyList}>No symbols in this market. Search to add one.</li>
+          <li className={styles.emptyList}>还没有币种。搜索现货或合约后加入。</li>
         ) : (
           items.map((item) => {
             const active = item.symbolId === symbolId;
@@ -142,19 +178,28 @@ export function WatchlistPanel() {
                   className={`${styles.item} ${active ? styles.itemActive : ''}`}
                   onClick={() => setSymbolId(item.symbolId)}
                 >
-                  <span className={styles.symbol}>{item.symbol}</span>
-                  <FlashQuote
-                    value={lastPrice}
-                    valueText={formatPrice(lastPrice)}
-                    percentText={formatPercent(changePercent)}
-                    valueClassName={styles.price}
-                    percentClassName={styles.change}
-                    between={
-                      <span className={styles.market}>
-                        {item.marketType === 'spot' ? 'Spot' : 'Perp'}
-                      </span>
-                    }
-                  />
+                  <span className={styles.symbolCell}>
+                    <SymbolWithPerp
+                      name={listedSymbol(item)}
+                      perpetual={item.marketType !== 'spot'}
+                      nameClassName={styles.symbol}
+                    />
+                    {item.marketType === 'spot' && listedTag(item, marginLeverage) ? (
+                      <MarketTag
+                        marketType={item.marketType}
+                        label={listedTag(item, marginLeverage)!}
+                      />
+                    ) : null}
+                  </span>
+                  <span className={styles.quoteCell}>
+                    <FlashQuote
+                      value={lastPrice}
+                      valueText={lastPrice > 0 ? formatPrice(lastPrice) : '—'}
+                      percentText={lastPrice > 0 ? formatPercent(changePercent) : '—'}
+                      valueClassName={styles.price}
+                      percentClassName={styles.change}
+                    />
+                  </span>
                 </button>
                 <button
                   type="button"

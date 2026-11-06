@@ -1,3 +1,4 @@
+import { formatMarketPrice, parseSymbolId } from '@vexora/shared';
 import type {
   KlineInterval,
   MarketType,
@@ -6,9 +7,31 @@ import type {
   WatchlistItem,
 } from '../types/terminal';
 
+export function marketTypeLabel(marketType: MarketType): string {
+  return marketType === 'spot' ? '现货' : '合约';
+}
+
+/** Binance list name: spot `BTC/USDT`, perpetual `BTCUSDT`. */
+export function listedSymbol(item: Pick<WatchlistItem, 'symbol' | 'marketType'>): string {
+  const [base, quote] = item.symbol.split('/');
+  if (!base || !quote) return item.symbol;
+  return item.marketType === 'spot' ? `${base}/${quote}` : `${base}${quote}`;
+}
+
+/** Binance list badge: spot `10x`/`5x` when margin is offered, perpetual `永续`. */
+export function listedTag(
+  item: Pick<WatchlistItem, 'symbol' | 'marketType' | 'marginLeverage'>,
+  leverageByRaw: Readonly<Record<string, number>> = {},
+): string | null {
+  if (item.marketType !== 'spot') return '永续';
+  const raw = item.symbol.replace('/', '').toUpperCase();
+  const leverage = item.marginLeverage ?? leverageByRaw[raw];
+  return leverage ? `${leverage}x` : null;
+}
+
 export const MARKET_TYPE_OPTIONS: Array<{ label: string; value: MarketType }> = [
-  { label: 'Spot', value: 'spot' },
-  { label: 'USDT-M', value: 'usdt_perpetual' },
+  { label: '现货', value: 'spot' },
+  { label: '合约', value: 'usdt_perpetual' },
 ];
 
 export const INTERVAL_OPTIONS: Array<{ label: string; value: KlineInterval }> = [
@@ -141,8 +164,26 @@ export const DEFAULT_WATCHLIST_IDS: string[] = [
 /** @deprecated Prefer MARKET_INSTRUMENTS / resolveWatchlistItems */
 export const WATCHLIST = MARKET_INSTRUMENTS;
 
+export function watchlistItemFromSymbolId(symbolId: string): WatchlistItem | undefined {
+  try {
+    const parsed = parseSymbolId(symbolId);
+    return {
+      symbolId,
+      symbol: `${parsed.base}/${parsed.quote}`,
+      marketType: parsed.marketType,
+      lastPrice: 0,
+      changePercent: 0,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 export function getInstrument(symbolId: string): WatchlistItem | undefined {
-  return MARKET_INSTRUMENTS.find((item) => item.symbolId === symbolId);
+  return (
+    MARKET_INSTRUMENTS.find((item) => item.symbolId === symbolId) ??
+    watchlistItemFromSymbolId(symbolId)
+  );
 }
 
 export function resolveWatchlistItems(ids: string[]): WatchlistItem[] {
@@ -153,13 +194,14 @@ export function resolveWatchlistItems(ids: string[]): WatchlistItem[] {
 
 export function searchInstruments(
   query: string,
-  options?: { marketType?: MarketType; limit?: number },
+  options?: { marketType?: MarketType; limit?: number; pool?: WatchlistItem[] },
 ): WatchlistItem[] {
   const normalized = query.trim().toLowerCase().replace(/[-_\s]/g, '');
   const limit = options?.limit ?? 8;
+  const source = options?.pool ?? MARKET_INSTRUMENTS;
   const pool = options?.marketType
-    ? MARKET_INSTRUMENTS.filter((item) => item.marketType === options.marketType)
-    : MARKET_INSTRUMENTS;
+    ? source.filter((item) => item.marketType === options.marketType)
+    : source;
 
   if (!normalized) {
     return pool.slice(0, limit);
@@ -172,6 +214,23 @@ export function searchInstruments(
       return symbol.includes(normalized) || id.includes(normalized);
     })
     .slice(0, limit);
+}
+
+export function toWatchlistItemFromInstrument(input: {
+  symbolId: string;
+  base: string;
+  quote: string;
+  marketType: MarketType;
+  marginLeverage?: number;
+}): WatchlistItem {
+  return {
+    symbolId: input.symbolId,
+    symbol: `${input.base}/${input.quote}`,
+    marketType: input.marketType,
+    lastPrice: 0,
+    changePercent: 0,
+    ...(input.marginLeverage ? { marginLeverage: input.marginLeverage } : {}),
+  };
 }
 
 export function buildOrderBook(mid: number): { bids: OrderBookLevel[]; asks: OrderBookLevel[] } {
@@ -207,21 +266,50 @@ export function buildTrades(mid: number): TradeTick[] {
   });
 }
 
+/** UI price text — Binance-style subscripts for micro prices (e.g. 0.0₅487). */
 export function formatPrice(value: number): string {
-  if (value >= 1000) {
-    return value.toLocaleString('en-US', {
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1,
-    });
-  }
-  return value.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 4,
-  });
+  return formatMarketPrice(value);
 }
 
+export interface QtyScale {
+  divisor: number;
+  suffix: string;
+  decimals: number;
+}
+
+/**
+ * Pick one size unit from the visible book magnitude.
+ * BTC (max ~few coins) stays plain; meme coins (millions+) use K/M/B.
+ */
+export function qtyScaleForMax(maxQty: number): QtyScale {
+  const abs = Math.abs(maxQty);
+  if (!Number.isFinite(abs) || abs <= 0) {
+    return { divisor: 1, suffix: '', decimals: 3 };
+  }
+  if (abs >= 1_000_000_000) return { divisor: 1_000_000_000, suffix: 'B', decimals: 2 };
+  if (abs >= 1_000_000) return { divisor: 1_000_000, suffix: 'M', decimals: 2 };
+  if (abs >= 100_000) return { divisor: 1_000, suffix: 'K', decimals: 2 };
+  if (abs >= 100) return { divisor: 1, suffix: '', decimals: 2 };
+  if (abs >= 1) return { divisor: 1, suffix: '', decimals: 3 };
+  if (abs >= 0.001) return { divisor: 1, suffix: '', decimals: 4 };
+  return { divisor: 1, suffix: '', decimals: 6 };
+}
+
+/** Format with an explicit scale so one book uses one unit. */
+export function formatQtyWithScale(value: number, scale: QtyScale): string {
+  if (!Number.isFinite(value)) return '—';
+  if (value === 0) return '0';
+  const sign = value < 0 ? '-' : '';
+  const scaled = Math.abs(value) / scale.divisor;
+  if (scale.divisor === 1 && scaled > 0 && scaled < 0.001) {
+    return `${sign}${scaled.toPrecision(3)}`;
+  }
+  return `${sign}${scaled.toFixed(scale.decimals)}${scale.suffix}`;
+}
+
+/** Standalone qty (trades etc.): infer scale from the value itself. */
 export function formatQty(value: number): string {
-  return value.toFixed(3);
+  return formatQtyWithScale(value, qtyScaleForMax(Math.abs(value)));
 }
 
 export function formatPercent(value: number): string {

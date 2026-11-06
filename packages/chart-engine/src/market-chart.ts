@@ -1,4 +1,8 @@
-import type { Kline } from '@vexora/shared';
+import {
+  formatMarketPrice,
+  inferPriceMinMove,
+  type Kline,
+} from '@vexora/shared';
 import {
   CandlestickSeries,
   ColorType,
@@ -108,10 +112,12 @@ function normalizeIndicators(indicators: readonly ChartIndicator[]): ChartIndica
   return INDICATOR_ORDER.filter((indicator) => selected.has(indicator));
 }
 
-const LEGEND_STYLE_ID = 'vx-chart-legend-style';
+const LEGEND_STYLE_ID = 'vx-chart-legend-style-v2';
 
 function ensureLegendStyle(): void {
-  if (document.getElementById(LEGEND_STYLE_ID)) return;
+  const existing = document.getElementById(LEGEND_STYLE_ID);
+  if (existing) existing.remove();
+  document.getElementById('vx-chart-legend-style')?.remove();
   const style = document.createElement('style');
   style.id = LEGEND_STYLE_ID;
   style.textContent = `
@@ -162,11 +168,28 @@ function ensureLegendStyle(): void {
 }
 
 function formatPrice(value: number): string {
-  const digits = value >= 1000 ? 2 : value >= 1 ? 4 : 6;
-  return value.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: digits,
-  });
+  return formatMarketPrice(value);
+}
+
+function formatPriceDelta(value: number): string {
+  const sign = value > 0 ? '+' : value < 0 ? '-' : '';
+  const abs = Math.abs(value);
+  if (!Number.isFinite(abs) || abs === 0) return '+0';
+  // Tiny absolute changes must keep precision (avoid "+0.00").
+  if (abs < 0.01) return `${sign}${formatMarketPrice(abs)}`;
+  return `${sign}${formatMarketPrice(abs)}`;
+}
+
+function buildPriceFormat(samplePrice: number): {
+  type: 'custom';
+  minMove: number;
+  formatter: (price: number) => string;
+} {
+  return {
+    type: 'custom',
+    minMove: inferPriceMinMove(samplePrice),
+    formatter: (price: number) => formatMarketPrice(price),
+  };
 }
 
 function formatVolume(value: number): string {
@@ -254,10 +277,25 @@ export function createMarketChart(
     wickDownColor: THEME.down,
     priceLineVisible: true,
     lastValueVisible: true,
+    // Default LWC precision is 2 → "0.00" for meme coins until we reformat.
+    priceFormat: buildPriceFormat(1),
   });
   candles.priceScale().applyOptions({
     scaleMargins: { top: 0.08, bottom: 0.28 },
   });
+
+  let activePriceFormat = buildPriceFormat(1);
+
+  const applyPane0PriceFormat = (samplePrice: number): void => {
+    if (!Number.isFinite(samplePrice) || samplePrice === 0) return;
+    activePriceFormat = buildPriceFormat(samplePrice);
+    candles.applyOptions({ priceFormat: activePriceFormat });
+    // Overlay series on the same scale can steal formatting if left at defaults.
+    for (const key of ['ma', 'ema'] as const) {
+      const series = studies.get(key);
+      series?.applyOptions({ priceFormat: activePriceFormat });
+    }
+  };
 
   const volume = chart.addSeries(HistogramSeries, {
     priceFormat: { type: 'volume' },
@@ -341,8 +379,10 @@ export function createMarketChart(
         lineWidth: 2,
         title,
         priceLineVisible: false,
-        lastValueVisible: true,
+        // Keep overlay last-value off so the candle series owns the scale badge.
+        lastValueVisible: false,
         crosshairMarkerVisible: false,
+        ...(pane === 0 ? { priceFormat: activePriceFormat } : {}),
       },
       pane,
     );
@@ -437,7 +477,7 @@ export function createMarketChart(
     legendClose.textContent = formatPrice(row.close);
     legendClose.className = direction;
     legendChange.className = direction;
-    legendChange.textContent = `${delta >= 0 ? '+' : ''}${formatPrice(delta)} (${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%)`;
+    legendChange.textContent = `${formatPriceDelta(delta)} (${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%)`;
     legendVolume.textContent = formatVolume(row.volume);
     legend.style.display = 'flex';
   };
@@ -598,6 +638,8 @@ export function createMarketChart(
       }
       coalescer.cancel();
       buffer.reset(klines);
+      const sample = buffer.last()?.close ?? next?.close;
+      if (sample != null) applyPane0PriceFormat(sample);
       paintAll();
       syncExtremeCallouts();
     },

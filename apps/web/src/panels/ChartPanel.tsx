@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { CHART_INDICATORS, type ChartIndicator } from '@vexora/chart-engine';
-import { getInstrument } from '../data/mockMarket';
+import { SymbolWithPerp } from '../components/SymbolWithPerp';
+import { getInstrument, listedSymbol, listedTag } from '../data/mockMarket';
+import { useMarginLeverage } from '../market/marginLeverage';
 import { useTerminalChart, type StreamStatus } from '../chart/useTerminalChart';
 import { useTerminalStore } from '../store/terminalStore';
 import styles from './ChartPanel.module.css';
@@ -39,8 +41,8 @@ function toggleIndicator(
 export function ChartPanel() {
   const symbolId = useTerminalStore((state) => state.symbolId);
   const interval = useTerminalStore((state) => state.interval);
-  const marketType = useTerminalStore((state) => state.marketType);
   const hostRef = useRef<HTMLDivElement>(null);
+  const marginLeverage = useMarginLeverage();
   const [indicators, setIndicators] = useState<ChartIndicator[]>([]);
   const { status, error } = useTerminalChart(hostRef, symbolId, interval, indicators);
   const active = getInstrument(symbolId);
@@ -50,9 +52,18 @@ export function ChartPanel() {
       <div className={styles.toolbar}>
         <h2 className={styles.title}>Chart</h2>
         <div className={styles.meta}>
-          <span>{active?.symbol ?? '—'}</span>
+          {active ? (
+            <SymbolWithPerp
+              name={listedSymbol(active)}
+              perpetual={listedTag(active, marginLeverage) === '永续'}
+            />
+          ) : (
+            <span>—</span>
+          )}
           <span>{interval}</span>
-          <span>{marketType === 'spot' ? 'Spot' : 'USDT-M'}</span>
+          {active && listedTag(active, marginLeverage) && listedTag(active, marginLeverage) !== '永续' ? (
+            <span>{listedTag(active, marginLeverage)}</span>
+          ) : null}
           <span className={statusClass(status)} data-chart-status={status}>
             {STATUS_LABEL[status]}
           </span>

@@ -1,0 +1,27 @@
+.line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.perp {
+  flex: none;
+  padding: 0 5px;
+  border: 1px solid #2c2c2c;
+  border-radius: 2px;
+  background: #111;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.04em;
+}

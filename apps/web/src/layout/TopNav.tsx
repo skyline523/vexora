@@ -1,13 +1,17 @@
 import { Segmented, Select } from 'antd';
 import { FlashQuote } from '../components/FlashQuote';
+import { SymbolWithPerp } from '../components/SymbolWithPerp';
 import {
   formatPercent,
   formatPrice,
   getInstrument,
   INTERVAL_OPTIONS,
+  listedSymbol,
+  listedTag,
   MARKET_TYPE_OPTIONS,
   resolveWatchlistItems,
 } from '../data/mockMarket';
+import { useMarginLeverage } from '../market/marginLeverage';
 import { useQuoteStore } from '../market/quotes';
 import { useTerminalStore } from '../store/terminalStore';
 import type { KlineInterval, MarketType } from '../types/terminal';
@@ -22,6 +26,7 @@ export function TopNav() {
   const setSymbolId = useTerminalStore((state) => state.setSymbolId);
   const setInterval = useTerminalStore((state) => state.setInterval);
 
+  const marginLeverage = useMarginLeverage();
   const symbols = resolveWatchlistItems(watchlistIds).filter(
     (item) => item.marketType === marketType,
   );
@@ -53,10 +58,19 @@ export function TopNav() {
           <Select
             style={{ minWidth: 140 }}
             value={symbolId}
-            options={symbols.map((item) => ({
-              label: item.symbol,
-              value: item.symbolId,
-            }))}
+            options={symbols.map((item) => {
+              const tag = listedTag(item, marginLeverage);
+              const perpetual = tag === '永续';
+              return {
+                label: (
+                  <span className={styles.symbolOption}>
+                    <SymbolWithPerp name={listedSymbol(item)} perpetual={perpetual} />
+                    {!perpetual && tag ? <span>{tag}</span> : null}
+                  </span>
+                ),
+                value: item.symbolId,
+              };
+            })}
             onChange={setSymbolId}
           />
         </div>

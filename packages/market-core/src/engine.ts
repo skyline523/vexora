@@ -1,8 +1,11 @@
 import {
   buildSymbolId,
   createLogger,
+  parseSymbolId,
   type ExchangeAdapter,
   type ExchangeId,
+  type ExchangeInfo,
+  type ExchangeInstrument,
   type GapInfo,
   type GetKlinesParams,
   type Kline,
@@ -40,6 +43,7 @@ const DEFAULT_STALE_MS = 30_000;
 const DEFAULT_MAX_GAP_BARS = 5000;
 const DEFAULT_KLINE_LIMIT = 500;
 const MAX_KLINE_LIMIT = 1500;
+const EXCHANGE_INFO_TTL_MS = 60 * 60 * 1000;
 
 export interface MarketDataEngineOptions {
   adapters: ExchangeAdapter[];
@@ -100,7 +104,28 @@ function clampLimit(limit: number | undefined): number {
   return Math.min(Math.floor(value), MAX_KLINE_LIMIT);
 }
 
-function toMarketError(error: unknown, symbolId: string | undefined, ts: number): MarketError {
+function scopeFromSymbolId(symbolId: string): {
+  symbolId: string;
+  marketType?: MarketType;
+  exchange?: ExchangeId;
+} {
+  try {
+    const parsed = parseSymbolId(symbolId);
+    return {
+      symbolId,
+      marketType: parsed.marketType,
+      exchange: parsed.exchange,
+    };
+  } catch {
+    return { symbolId };
+  }
+}
+
+function toMarketError(
+  error: unknown,
+  opts: { symbolId?: string; marketType?: MarketType; exchange?: ExchangeId },
+  ts: number,
+): MarketError {
   const record =
     typeof error === 'object' && error != null
       ? (error as { code?: unknown; retryable?: unknown })
@@ -108,7 +133,9 @@ function toMarketError(error: unknown, symbolId: string | undefined, ts: number)
   return {
     code: typeof record?.code === 'string' ? record.code : 'MARKET_UPSTREAM',
     message: error instanceof Error ? error.message : String(error),
-    symbolId,
+    exchange: opts.exchange,
+    marketType: opts.marketType,
+    symbolId: opts.symbolId,
     retryable: record?.retryable === true,
     ts,
   };
@@ -144,6 +171,10 @@ export class MarketDataEngine {
   private readonly needsRecover = new Set<string>();
   private readonly filling = new Set<string>();
   private readonly inflight = new Set<Promise<unknown>>();
+  private readonly exchangeInfoCache = new Map<
+    string,
+    { expiresAt: number; info: ExchangeInfo }
+  >();
   private nextId = 1;
   private closed = false;
 
@@ -307,13 +338,104 @@ export class MarketDataEngine {
     this.assertOpen();
     this.assertSymbol(symbol);
     try {
-      const ticker = await this.exchanges.get(symbol.exchange).getTicker(symbol);
-      this.ingestTicker(ticker);
-      return { ...ticker };
+      return await this.fetchTicker(symbol);
     } catch (error) {
-      this.fail(error, symbol.symbolId);
+      this.fail(error, {
+        symbolId: symbol.symbolId,
+        marketType: symbol.marketType,
+        exchange: symbol.exchange,
+      });
       throw error;
     }
+  }
+
+  /**
+   * Fetch tickers for many symbols. Per-symbol failures are skipped and do not
+   * broadcast stream errors — mixed Spot/Perp watchlists must not poison each other.
+   */
+  async getTickers(symbols: MarketSymbol[]): Promise<Ticker[]> {
+    this.assertOpen();
+    const unique = new Map<string, MarketSymbol>();
+    for (const symbol of symbols) {
+      this.assertSymbol(symbol);
+      unique.set(symbol.symbolId, symbol);
+    }
+    const results = await Promise.all(
+      [...unique.values()].map(async (symbol) => {
+        try {
+          return await this.fetchTicker(symbol);
+        } catch (error) {
+          this.logger.warn('ticker.fetch_failed', {
+            symbolId: symbol.symbolId,
+            marketType: symbol.marketType,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          return null;
+        }
+      }),
+    );
+    return results.filter((ticker): ticker is Ticker => ticker != null);
+  }
+
+  async getSpotMarginLeverage(exchange: ExchangeId): Promise<Record<string, number>> {
+    this.assertOpen();
+    const adapter = this.exchanges.get(exchange) as ExchangeAdapter & {
+      getSpotMarginLeverage?: () => Promise<Record<string, number>>;
+    };
+    if (!adapter.getSpotMarginLeverage) return {};
+    return adapter.getSpotMarginLeverage();
+  }
+
+  async getExchangeInfo(
+    exchange: ExchangeId,
+    marketType: MarketType,
+  ): Promise<ExchangeInfo> {
+    this.assertOpen();
+    const cacheKey = `${exchange}:${marketType}`;
+    const cached = this.exchangeInfoCache.get(cacheKey);
+    if (cached && cached.expiresAt > this.now()) {
+      return cached.info;
+    }
+
+    try {
+      const info = await this.exchanges.get(exchange).getExchangeInfo(marketType);
+      this.exchangeInfoCache.set(cacheKey, {
+        info,
+        expiresAt: this.now() + EXCHANGE_INFO_TTL_MS,
+      });
+      return info;
+    } catch (error) {
+      // Scoped to this market so a Perp exchangeInfo outage does not red-banner Spot charts.
+      this.fail(error, { exchange, marketType });
+      throw error;
+    }
+  }
+
+  async searchInstruments(params: {
+    exchange: ExchangeId;
+    marketType: MarketType;
+    query?: string;
+    quote?: string;
+    limit?: number;
+    tradingOnly?: boolean;
+  }): Promise<ExchangeInstrument[]> {
+    const info = await this.getExchangeInfo(params.exchange, params.marketType);
+    const normalized = (params.query ?? '').trim().toLowerCase().replace(/[-_\s]/g, '');
+    const quote = params.quote?.toUpperCase();
+    const tradingOnly = params.tradingOnly !== false;
+    const limit = Math.min(Math.max(params.limit ?? 20, 1), 100);
+
+    const filtered = info.instruments.filter((item) => {
+      if (quote && item.symbol.quote !== quote) return false;
+      if (tradingOnly && item.status !== 'trading') return false;
+      if (!normalized) return true;
+      const pair = `${item.symbol.base}/${item.symbol.quote}`.toLowerCase().replace(/[-_\s]/g, '');
+      const id = item.symbol.symbolId.toLowerCase();
+      const raw = item.symbol.rawSymbol.toLowerCase();
+      return pair.includes(normalized) || id.includes(normalized) || raw.includes(normalized);
+    });
+
+    return filtered.slice(0, limit);
   }
 
   async refreshOrderBook(symbol: MarketSymbol, depth?: number): Promise<OrderBookSnapshot> {
@@ -331,7 +453,11 @@ export class MarketDataEngine {
       );
       return stored;
     } catch (error) {
-      this.fail(error, symbol.symbolId);
+      this.fail(error, {
+        symbolId: symbol.symbolId,
+        marketType: symbol.marketType,
+        exchange: symbol.exchange,
+      });
       throw error;
     }
   }
@@ -490,7 +616,9 @@ export class MarketDataEngine {
     this.touch(kline.symbolId, kline.receivedAt);
     if (kline.closed && this.history) {
       this.track(
-        this.persistClosed([kline]).catch((error: unknown) => this.fail(error, kline.symbolId)),
+        this.persistClosed([kline]).catch((error: unknown) =>
+          this.fail(error, scopeFromSymbolId(kline.symbolId)),
+        ),
       );
     }
     this.publish({ type: 'kline', payload: kline }, key);
@@ -501,9 +629,15 @@ export class MarketDataEngine {
     if (gaps.length === 0) return;
     this.track(
       this.repair(target.symbol, gaps, true).catch((error: unknown) =>
-        this.fail(error, kline.symbolId),
+        this.fail(error, scopeFromSymbolId(kline.symbolId)),
       ),
     );
+  }
+
+  private async fetchTicker(symbol: MarketSymbol): Promise<Ticker> {
+    const ticker = await this.exchanges.get(symbol.exchange).getTicker(symbol);
+    this.ingestTicker(ticker);
+    return { ...ticker };
   }
 
   private ingestTicker(ticker: Ticker): void {
@@ -603,7 +737,9 @@ export class MarketDataEngine {
     }
     if (state === 'connected' && this.needsRecover.delete(id)) {
       this.track(
-        this.recoverMarket(exchange, marketType).catch((error: unknown) => this.fail(error)),
+        this.recoverMarket(exchange, marketType).catch((error: unknown) =>
+          this.fail(error, { exchange, marketType }),
+        ),
       );
     }
   }
@@ -681,12 +817,16 @@ export class MarketDataEngine {
     }
   }
 
-  private fail(error: unknown, symbolId?: string): void {
-    const payload = toMarketError(error, symbolId, this.now());
+  private fail(
+    error: unknown,
+    scope: { symbolId?: string; marketType?: MarketType; exchange?: ExchangeId } = {},
+  ): void {
+    const payload = toMarketError(error, scope, this.now());
     this.logger.warn('market.error', {
       code: payload.code,
       message: payload.message,
-      symbolId,
+      symbolId: scope.symbolId,
+      marketType: scope.marketType,
     });
     this.publish({ type: 'error', payload });
   }

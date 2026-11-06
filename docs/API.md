@@ -99,10 +99,27 @@ Query：
 
 | 参数 | 必填 | 说明 |
 |---|---|---|
-| exchange | 是 | `binance` |
+| exchange | 否 | 默认 `binance` |
 | marketType | 是 | `spot` \| `usdt_perpetual` |
+| q | 否 | 搜索关键字（匹配 base/quote/rawSymbol） |
+| quote | 否 | 默认 `USDT` |
+| limit | 否 | 默认 20，最大 100 |
 
-响应 `data`：`ExchangeInstrument[]`
+响应：
+
+```json
+{
+  "ok": true,
+  "data": {
+    "exchange": "binance",
+    "marketType": "spot",
+    "quote": "USDT",
+    "instruments": []
+  }
+}
+```
+
+`instruments` 元素类型为 `ExchangeInstrument`。
 
 ### 2.3 历史 K 线
 
@@ -136,6 +153,13 @@ Query：
 `GET /api/markets/ticker?symbolId=binance:spot:BTC/USDT`
 
 响应 `data`：`Ticker`
+
+批量：
+
+`GET /api/markets/tickers?symbolIds=binance:spot:BTC/USDT,binance:spot:ETH/USDT`
+
+- 最多 20 个 `symbolId`
+- 响应 `data.tickers`：`Ticker[]`（单个失败会跳过，不拖垮整批）
 
 ### 2.5 OrderBook Snapshot
 

@@ -39,7 +39,7 @@
 | Validation | Zod | 3.x |
 | AI SDK | Vercel AI SDK (`ai`) | 4.x / 5.x |
 | ORM | Drizzle ORM | 0.39+ |
-| Database | better-sqlite3 / libsql | 与 Drizzle 适配版本 |
+| Database | `@libsql/client`（本地 SQLite 文件） | 与 Drizzle 适配版本 |
 | Test Unit | Vitest | 3.x |
 | Test E2E | Playwright | 1.x |
 | Lint | ESLint | 9.x |
@@ -168,13 +168,17 @@
 **理由**
 
 - SQLite 零运维，适合本地优先。
+- 通过 `@libsql/client` 访问本地 `file:` SQLite，避免 Windows 上 `better-sqlite3` 原生编译问题。
 - Drizzle 类型友好、SQL 透明、migration 清晰。
 - 配置/记录类数据体量适合关系库；行情大文件走文件系统。
+
+实现位置：`packages/database`（schema / migration / repository），由 `apps/server` 启动时初始化并 seed 默认交易所与自选。
 
 **替代方案**
 
 | 方案 | 取舍 |
 |---|---|
+| better-sqlite3 | 同步 API，但需原生编译（Node 版本/工具链敏感） |
 | Prisma + SQLite | 可用，但客户端较重 |
 | PostgreSQL | 云端阶段再评估 |
 | DuckDB | 分析型查询强，可作为历史行情后续选项 |

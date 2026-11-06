@@ -185,9 +185,36 @@ export function withCumulativeTotals(
   });
 }
 
-export const BOOK_TICK_OPTIONS = [0.01, 0.1, 1, 10] as const;
-export type BookTick = (typeof BOOK_TICK_OPTIONS)[number];
 export const BOOK_SIDE_LEVELS = 7;
+export type BookTick = number;
+
+const FALLBACK_TICK_OPTIONS = [0.01, 0.1, 1, 10];
+
+/**
+ * Build tick ladder from mid price.
+ * - BTC (~70k) → 0.01, 0.1, 1, 10
+ * - PEPE (~5e-6) → 0.00000001, 0.0000001, 0.000001, 0.00001
+ */
+export function bookTickOptionsForPrice(price: number | null | undefined): number[] {
+  if (price == null || !Number.isFinite(price) || price <= 0) {
+    return [...FALLBACK_TICK_OPTIONS];
+  }
+
+  // High-priced coins need a finer floor (BTC min 0.01, not 1).
+  // Micro-priced coins need ticks near their significant digits.
+  const magnitude = Math.floor(Math.log10(price));
+  const finestExp = price >= 1 ? magnitude - 6 : magnitude - 2;
+  const base = Math.pow(10, finestExp);
+  const options = [base, base * 10, base * 100, base * 1000]
+    .map((tick) => Number(tick.toPrecision(12)))
+    .filter((tick) => tick > 0);
+
+  return options.length > 0 ? options : [...FALLBACK_TICK_OPTIONS];
+}
+
+export function defaultBookTick(price: number | null | undefined): number {
+  return bookTickOptionsForPrice(price)[0]!;
+}
 
 function bucketPrice(price: number, tick: number, side: 'bid' | 'ask'): number {
   const scaled = price / tick;
@@ -198,10 +225,11 @@ function bucketPrice(price: number, tick: number, side: 'bid' | 'ask'): number {
 }
 
 export function tickDecimals(tick: number): number {
+  if (!Number.isFinite(tick) || tick <= 0) return 2;
   if (tick >= 1) return 0;
-  const text = String(tick);
+  const text = tick.toFixed(12).replace(/0+$/, '');
   const dot = text.indexOf('.');
-  return dot < 0 ? 0 : text.length - dot - 1;
+  return dot < 0 ? 0 : Math.min(12, text.length - dot - 1);
 }
 
 export function formatBookPrice(price: number, tick: number): string {
@@ -210,6 +238,12 @@ export function formatBookPrice(price: number, tick: number): string {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
+}
+
+/** Full-length tick labels (never scientific), e.g. 0.00000001. */
+export function formatTickLabel(tick: number): string {
+  if (!Number.isFinite(tick) || tick <= 0) return String(tick);
+  return tick.toFixed(tickDecimals(tick));
 }
 
 /** Group raw levels by tick size and keep the best `limit` buckets. */

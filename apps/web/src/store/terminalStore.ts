@@ -1,5 +1,10 @@
 import { create } from 'zustand';
 import {
+  addWatchlistSymbol,
+  fetchWatchlist,
+  removeWatchlistItem,
+} from '../api/watchlist';
+import {
   DEFAULT_WATCHLIST_IDS,
   getInstrument,
   resolveWatchlistItems,
@@ -22,12 +27,14 @@ interface TerminalState {
   interval: KlineInterval;
   layout: LayoutWidths;
   watchlistIds: string[];
+  watchlistHydrated: boolean;
   setMarketType: (marketType: MarketType) => void;
   setSymbolId: (symbolId: string) => void;
   setInterval: (interval: KlineInterval) => void;
   setLayout: (patch: Partial<LayoutWidths>) => void;
   addToWatchlist: (symbolId: string) => void;
   removeFromWatchlist: (symbolId: string) => void;
+  hydrateWatchlistFromServer: () => Promise<void>;
 }
 
 function loadLayout(): LayoutWidths {
@@ -63,7 +70,9 @@ function loadWatchlistIds(): string[] {
     if (!Array.isArray(parsed)) {
       return [...DEFAULT_WATCHLIST_IDS];
     }
-    const ids = parsed.filter((id): id is string => typeof id === 'string' && Boolean(getInstrument(id)));
+    const ids = parsed.filter(
+      (id): id is string => typeof id === 'string' && Boolean(getInstrument(id)),
+    );
     return ids.length > 0 ? ids : [...DEFAULT_WATCHLIST_IDS];
   } catch {
     return [...DEFAULT_WATCHLIST_IDS];
@@ -78,7 +87,7 @@ function persistLayout(layout: LayoutWidths): void {
   localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layout));
 }
 
-function persistWatchlist(ids: string[]): void {
+function persistWatchlistCache(ids: string[]): void {
   localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(ids));
 }
 
@@ -109,6 +118,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   interval: '15m',
   layout: loadLayout(),
   watchlistIds: initialWatchlistIds,
+  watchlistHydrated: false,
   setMarketType: (marketType) => {
     const nextId = pickSymbolForMarket(get().watchlistIds, marketType, get().symbolId);
     set({
@@ -143,12 +153,15 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       return;
     }
     const next = [...watchlistIds, symbolId];
-    persistWatchlist(next);
+    persistWatchlistCache(next);
     const instrument = getInstrument(symbolId)!;
     set({
       watchlistIds: next,
       symbolId,
       marketType: instrument.marketType,
+    });
+    void addWatchlistSymbol(symbolId).catch(() => {
+      // Keep optimistic UI; next hydrate will reconcile.
     });
   },
   removeFromWatchlist: (symbolId) => {
@@ -160,21 +173,50 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     if (next.length === 0) {
       return;
     }
-    persistWatchlist(next);
+    persistWatchlistCache(next);
 
     if (activeId !== symbolId) {
       set({ watchlistIds: next });
-      return;
+    } else {
+      const replacement =
+        resolveWatchlistItems(next).find((item) => item.marketType === marketType)?.symbolId ??
+        next[0]!;
+      const instrument = getInstrument(replacement);
+      set({
+        watchlistIds: next,
+        symbolId: replacement,
+        marketType: instrument?.marketType ?? marketType,
+      });
     }
 
-    const replacement =
-      resolveWatchlistItems(next).find((item) => item.marketType === marketType)?.symbolId ??
-      next[0]!;
-    const instrument = getInstrument(replacement);
-    set({
-      watchlistIds: next,
-      symbolId: replacement,
-      marketType: instrument?.marketType ?? marketType,
+    void removeWatchlistItem(symbolId).catch(() => {
+      // Keep optimistic UI; next hydrate will reconcile.
     });
+  },
+  hydrateWatchlistFromServer: async () => {
+    try {
+      const items = await fetchWatchlist();
+      const ids = items
+        .map((item) => item.symbolId)
+        .filter((id) => Boolean(getInstrument(id)));
+      if (ids.length === 0) {
+        set({ watchlistHydrated: true });
+        return;
+      }
+      persistWatchlistCache(ids);
+      const { marketType, symbolId } = get();
+      const nextSymbol = ids.includes(symbolId)
+        ? symbolId
+        : pickSymbolForMarket(ids, marketType, ids[0]!);
+      const instrument = getInstrument(nextSymbol);
+      set({
+        watchlistIds: ids,
+        symbolId: nextSymbol,
+        marketType: instrument?.marketType ?? marketType,
+        watchlistHydrated: true,
+      });
+    } catch {
+      set({ watchlistHydrated: true });
+    }
   },
 }));

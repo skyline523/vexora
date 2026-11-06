@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { ResizeHandle } from '../components/ResizeHandle';
 import { AiPanel } from '../panels/AiPanel';
 import { ChartPanel } from '../panels/ChartPanel';
@@ -12,6 +12,11 @@ import styles from './TerminalShell.module.css';
 export function TerminalShell() {
   const layout = useTerminalStore((state) => state.layout);
   const setLayout = useTerminalStore((state) => state.setLayout);
+  const hydrateWatchlistFromServer = useTerminalStore((state) => state.hydrateWatchlistFromServer);
+
+  useEffect(() => {
+    void hydrateWatchlistFromServer();
+  }, [hydrateWatchlistFromServer]);
 
   const onWatchlistChange = useCallback(
     (watchlist: number) => {

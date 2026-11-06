@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { createMarketChart, type ChartIndicator, type MarketChart } from '@vexora/chart-engine';
-import type { Kline, KlineInterval } from '@vexora/shared';
+import { parseSymbolId, type Kline, type KlineInterval } from '@vexora/shared';
 import { fetchKlines, marketWebSocketUrl } from '../api/market';
 import { useQuoteStore } from '../market/quotes';
 
@@ -23,6 +23,23 @@ function isKline(value: unknown): value is Kline {
   if (!value || typeof value !== 'object') return false;
   const kline = value as Partial<Kline>;
   return typeof kline.openTime === 'number' && typeof kline.symbolId === 'string';
+}
+
+/** Ignore Spot↔Perp cross-talk on the shared browser socket. */
+function isRelevantMarketEvent(
+  activeSymbolId: string,
+  payload: { symbolId?: string; marketType?: string } | undefined,
+): boolean {
+  if (!payload) return false;
+  if (payload.symbolId) return payload.symbolId === activeSymbolId;
+  if (payload.marketType) {
+    try {
+      return parseSymbolId(activeSymbolId).marketType === payload.marketType;
+    } catch {
+      return false;
+    }
+  }
+  return false;
 }
 
 export function useTerminalChart(
@@ -118,14 +135,26 @@ export function useTerminalChart(
           return;
         }
         if (message.type === 'market.connection') {
-          const state = (message.payload as { state?: string } | undefined)?.state;
+          const payload = message.payload as
+            | { state?: string; marketType?: string; symbolId?: string }
+            | undefined;
+          if (!isRelevantMarketEvent(symbolId, payload)) return;
+          const state = payload?.state;
           if (state === 'reconnecting' || state === 'disconnected') setStatus('reconnecting');
           if (state === 'connected' && ready) setStatus('live');
+          return;
         }
         if (message.type === 'market.error') {
-          const text =
-            (message.payload as { message?: string } | undefined)?.message ?? 'Market stream error';
-          setError(text);
+          const payload = message.payload as
+            | { message?: string; symbolId?: string; marketType?: string; retryable?: boolean }
+            | undefined;
+          if (!isRelevantMarketEvent(symbolId, payload)) return;
+          // Transient upstream blips should reconnect, not hard-fail the chart.
+          if (payload?.retryable) {
+            setStatus('reconnecting');
+            return;
+          }
+          setError(payload?.message ?? 'Market stream error');
           setStatus('error');
         }
       };

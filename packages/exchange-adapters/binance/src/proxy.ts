@@ -60,6 +60,17 @@ export function resolveProxyUrl(explicit?: string): string | undefined {
   return cachedProxyUrl ?? undefined;
 }
 
+/**
+ * Local Clash mixed-port. Direct `fapi.binance.com` times out from this
+ * network; USDT-M REST/WS should egress here while spot stays on binance.vision.
+ */
+export async function detectLocalFuturesProxy(): Promise<string | undefined> {
+  if (await isLocalPortOpen(7890)) {
+    return 'http://127.0.0.1:7890';
+  }
+  return undefined;
+}
+
 export async function resolveProxyUrlAsync(
   explicit?: string,
 ): Promise<string | undefined> {

@@ -33,8 +33,10 @@ interface StreamHandler {
 export interface BinanceWsManagerOptions {
   bases?: Partial<Record<MarketType, string>>;
   wsFactory?: WsFactory;
-  /** Explicit HTTP(S) proxy for WSS CONNECT tunnel */
+  /** Explicit HTTP(S) proxy for WSS CONNECT tunnel. Used when a market has no override. */
   proxyUrl?: string;
+  /** Per-market proxy. Spot stays direct when only USDT-M needs a local HTTP proxy. */
+  proxies?: Partial<Record<MarketType, string | undefined>>;
   logger?: Logger;
   sink?: MarketSink;
   reconnectDelaysMs?: readonly number[];
@@ -66,7 +68,7 @@ function createDefaultWsFactory(proxyUrl?: string): WsFactory {
  */
 export class BinanceWsManager {
   private readonly bases: Record<MarketType, string>;
-  private readonly wsFactory: WsFactory;
+  private readonly wsFactories: Record<MarketType, WsFactory>;
   private readonly logger: Logger;
   private readonly reconnectDelaysMs: readonly number[];
   private readonly controlMinIntervalMs: number;
@@ -89,8 +91,17 @@ export class BinanceWsManager {
       usdt_perpetual:
         options.bases?.usdt_perpetual ?? BINANCE_WS_BASE.usdt_perpetual,
     };
-    this.wsFactory =
-      options.wsFactory ?? createDefaultWsFactory(options.proxyUrl);
+    const shared = options.wsFactory;
+    this.wsFactories = {
+      spot:
+        shared ??
+        createDefaultWsFactory(options.proxies?.spot ?? options.proxyUrl),
+      usdt_perpetual:
+        shared ??
+        createDefaultWsFactory(
+          options.proxies?.usdt_perpetual ?? options.proxyUrl,
+        ),
+    };
     this.logger =
       options.logger ?? createLogger('binance-ws', { level: 'info' });
     this.sink = options.sink;
@@ -199,7 +210,7 @@ export class BinanceWsManager {
   private async openSocket(marketType: MarketType, url: string): Promise<void> {
     let ws: WebSocket;
     try {
-      ws = await this.wsFactory(url);
+      ws = await this.wsFactories[marketType](url);
     } catch (error) {
       this.logger.error('ws.create_failed', {
         marketType,
@@ -297,6 +308,7 @@ export class BinanceWsManager {
             code: String(obj.code),
             message: obj.msg ?? 'Binance WS control error',
             exchange: BINANCE_EXCHANGE_ID,
+            marketType,
             retryable: true,
             ts: this.now(),
           },

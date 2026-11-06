@@ -28,6 +28,7 @@
 
 .meta {
   display: flex;
+  align-items: center;
   gap: 10px;
   font-family: var(--vx-mono);
   font-size: 11px;
